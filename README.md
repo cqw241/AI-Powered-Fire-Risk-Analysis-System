@@ -1,6 +1,6 @@
 # Qwen3.8-27B 消防风险分析系统 MVP
 
-当前已完成 F01：工程和 Gradio 页面骨架。页面支持单图上传和“开始分析”交互，后续 F02–F05 将依次接入图片处理、Qwen、结构化校验、法规规则和最终结果展示。
+当前已完成 F01：工程和 Gradio 页面骨架，以及 F02：图片解码、EXIF 方向修正、尺寸限制和 bbox 绘制。页面支持单图上传和“开始分析”交互，后续 F03–F05 将依次接入 Qwen、结构化校验、法规规则和最终结果展示。
 
 ## 目标
 
@@ -80,6 +80,16 @@ Gradio 上传图片
 → 组装 AnalysisResult
 → Gradio 展示 bbox、Finding、法规和整改建议
 ```
+
+## F02 图片处理接口
+
+`fire_safety.image.prepare_image` 接收上传字节或文件路径，返回 `PreparedImage`。其中
+`PreparedImage.image` 与 `PreparedImage.qwen_bytes` 都来自同一张 EXIF 修正后的图像，后续模型输入和 UI
+bbox 绘制必须使用这组统一坐标基准。无法使用的图片抛出 `ImageProcessingError`，其 `status` 为
+`image_unusable`。
+
+`bbox_to_pixels` 校验 0–1000 的整数坐标并转换为半开像素矩形；`draw_bboxes` 对每个 Finding 单独处理，
+无效 bbox 会被跳过，但不会影响同一 Finding 或其他 Finding 的绘制。
 
 ## 文件职责
 
