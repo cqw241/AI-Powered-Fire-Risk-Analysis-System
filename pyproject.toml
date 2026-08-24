@@ -1,0 +1,36 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fire-safety-ai"
+version = "0.1.0"
+description = "Qwen-powered fire risk analysis system MVP"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "gradio==6.22.0",
+    "openai>=1.0,<2",
+    "pydantic>=2,<3",
+    "pydantic-settings>=2,<3",
+    "pillow>=10,<12",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8,<9",
+    "ruff>=0.8,<1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fire_safety"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]

@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "visual_investigation.schema.json",
+  "title": "VisualInvestigation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "scene_summary",
+    "regions",
+    "findings"
+  ],
+  "properties": {
+    "scene_summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "regions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/region"
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/finding"
+      }
+    }
+  },
+  "$defs": {
+    "bbox": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 1000
+      }
+    },
+    "region": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "region_id",
+        "bbox_1000",
+        "label"
+      ],
+      "properties": {
+        "region_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bbox_1000": {
+          "$ref": "#/$defs/bbox"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text",
+        "region_ids"
+      ],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "region_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "finding_id",
+        "title",
+        "description",
+        "risk_mechanism",
+        "risk_priority",
+        "evidence",
+        "suggested_issue_codes",
+        "limitations"
+      ],
+      "properties": {
+        "finding_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "risk_mechanism": {
+          "type": "string",
+          "minLength": 1
+        },
+        "risk_priority": {
+          "type": "string",
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/evidence"
+          }
+        },
+        "suggested_issue_codes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}
