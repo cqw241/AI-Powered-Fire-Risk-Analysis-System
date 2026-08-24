@@ -2,7 +2,7 @@
 
 from functools import lru_cache
 
-from pydantic import SecretStr
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -20,6 +20,25 @@ class Settings(BaseSettings):
     qwen_base_url: str | None = None
     qwen_api_key: SecretStr | None = None
     qwen_model: str = "Qwen3.8-27B"
+
+    max_image_bytes: int = Field(default=10 * 1024 * 1024, gt=0)
+    max_image_width: int = Field(default=8192, gt=0)
+    max_image_height: int = Field(default=8192, gt=0)
+    max_image_pixels: int = Field(default=40_000_000, gt=0)
+    allowed_image_formats: tuple[str, ...] = ("JPEG", "PNG", "WEBP")
+
+    @field_validator("allowed_image_formats")
+    @classmethod
+    def validate_image_formats(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        normalized = tuple(item.strip().upper() for item in value)
+        supported = {"JPEG", "PNG", "WEBP"}
+        if not normalized:
+            raise ValueError("at least one image format is required")
+        if len(set(normalized)) != len(normalized):
+            raise ValueError("image formats must not contain duplicates")
+        if unsupported := set(normalized) - supported:
+            raise ValueError(f"unsupported image formats: {', '.join(sorted(unsupported))}")
+        return normalized
 
     @property
     def qwen_configured(self) -> bool:
