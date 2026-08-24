@@ -179,14 +179,6 @@ def bbox_to_pixels(
     return pixel_bbox
 
 
-def bbox_1000_to_pixels(
-    bbox: Sequence[object], width: int, height: int
-) -> PixelBBox:
-    """Descriptive alias for :func:`bbox_to_pixels`."""
-
-    return bbox_to_pixels(bbox, width, height)
-
-
 def draw_bboxes(
     prepared: PreparedImage | Image.Image,
     finding_bboxes: Mapping[
@@ -288,7 +280,6 @@ __all__ = [
     "InvalidBoundingBox",
     "PixelBBox",
     "PreparedImage",
-    "bbox_1000_to_pixels",
     "bbox_to_pixels",
     "draw_bboxes",
     "prepare_image",
