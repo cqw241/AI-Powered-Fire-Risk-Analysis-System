@@ -5,6 +5,7 @@ from io import BytesIO
 import pytest
 from PIL import Image
 
+import fire_safety.image as image_module
 from fire_safety.image import (
     ImageProcessingError,
     ImageStatus,
@@ -68,6 +69,32 @@ def test_invalid_image_maps_to_image_unusable() -> None:
     assert error.value.reason == "decode_failed"
 
 
+def test_decompression_bomb_maps_to_image_unusable(monkeypatch: pytest.MonkeyPatch) -> None:
+    def raise_bomb(*args: object, **kwargs: object) -> object:
+        raise Image.DecompressionBombError("image too large")
+
+    monkeypatch.setattr(image_module.Image, "open", raise_bomb)
+
+    with pytest.raises(ImageProcessingError) as error:
+        prepare_image(b"valid-looking payload")
+
+    assert error.value.status is ImageStatus.IMAGE_UNUSABLE
+    assert error.value.reason == "decode_failed"
+
+
+def test_reencoding_failure_maps_to_image_unusable(monkeypatch: pytest.MonkeyPatch) -> None:
+    def raise_encode(*args: object, **kwargs: object) -> bytes:
+        raise OSError("encoder failed")
+
+    monkeypatch.setattr(image_module, "_encode_corrected", raise_encode)
+
+    with pytest.raises(ImageProcessingError) as error:
+        prepare_image(image_bytes("PNG"))
+
+    assert error.value.status is ImageStatus.IMAGE_UNUSABLE
+    assert error.value.reason == "encode_failed"
+
+
 def test_unsupported_format_maps_to_image_unusable() -> None:
     with pytest.raises(ImageProcessingError) as error:
         prepare_image(image_bytes("GIF"))
@@ -109,6 +136,15 @@ def test_bbox_validation_rejects_invalid_coordinates(bbox: tuple[object, ...]) -
 
 def test_bbox_conversion_uses_half_open_pixel_bounds() -> None:
     assert bbox_to_pixels((100, 200, 500, 800), 200, 100) == (20, 20, 100, 80)
+
+
+def test_bbox_conversion_preserves_semantics_when_image_scales() -> None:
+    bbox = (100, 200, 500, 800)
+
+    small = bbox_to_pixels(bbox, 200, 100)
+    large = bbox_to_pixels(bbox, 400, 200)
+
+    assert large == tuple(value * 2 for value in small)
 
 
 def test_draw_bboxes_skips_only_invalid_bbox() -> None:

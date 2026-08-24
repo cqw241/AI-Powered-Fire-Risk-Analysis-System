@@ -100,7 +100,7 @@ def prepare_image(
             corrected = ImageOps.exif_transpose(opened).copy()
     except ImageProcessingError:
         raise
-    except (OSError, ValueError, UnidentifiedImageError) as exc:
+    except (Image.DecompressionBombError, OSError, ValueError, UnidentifiedImageError) as exc:
         raise _image_error("decode_failed", "图片无法解码") from exc
 
     width, height = corrected.size
@@ -124,7 +124,10 @@ def prepare_image(
             max_image_pixels=app_settings.max_image_pixels,
         )
 
-    encoded = _encode_corrected(corrected, image_format)
+    try:
+        encoded = _encode_corrected(corrected, image_format)
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise _image_error("encode_failed", "图片无法重新编码") from exc
     if len(encoded) > app_settings.max_image_bytes:
         raise _image_error(
             "file_too_large",
@@ -173,8 +176,6 @@ def bbox_to_pixels(
         ceil(x_max * width / 1000),
         ceil(y_max * height / 1000),
     )
-    if pixel_bbox[0] >= pixel_bbox[2] or pixel_bbox[1] >= pixel_bbox[3]:
-        raise InvalidBoundingBox("bbox has no visible pixels at this image size")
     return pixel_bbox
 
 
