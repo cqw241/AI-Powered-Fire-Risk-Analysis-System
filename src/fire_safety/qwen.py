@@ -149,7 +149,19 @@ async def analyze_image(
 
     content = _response_content(response)
     try:
-        return VisualInvestigation.model_validate_json(content)
+        payload = json.loads(content)
+    except json.JSONDecodeError as exc:
+        raise InvalidModelOutputError(
+            "Qwen 返回的结构化结果无效",
+            reason="schema_validation_failed",
+        ) from exc
+    # DashScope OpenAI-compatible mode has been observed wrapping the single
+    # structured object in a one-element array; exactly-one-element arrays are
+    # normalized, anything else reaches the validator and is reported as-is.
+    if isinstance(payload, list) and len(payload) == 1 and isinstance(payload[0], dict):
+        payload = payload[0]
+    try:
+        return VisualInvestigation.model_validate(payload)
     except (ValidationError, ValueError) as exc:
         raise InvalidModelOutputError(
             "Qwen 返回的结构化结果无效",
