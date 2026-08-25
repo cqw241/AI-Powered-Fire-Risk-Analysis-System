@@ -106,9 +106,7 @@ class RuleCatalog(BaseModel):
         _validate_unique(catalog.clauses, "clause_id")
         for clause in catalog.clauses:
             if clause.clause_id.split("-", 1)[0] != clause.source_code:
-                raise ValueError(
-                    f"clause id prefix does not match source_code: {clause.clause_id}"
-                )
+                raise ValueError(f"clause id prefix does not match source_code: {clause.clause_id}")
         issue_set = {item.code for item in catalog.issue_codes}
         clause_set = {item.clause_id for item in catalog.clauses}
         for binding in catalog.bindings:
@@ -214,20 +212,18 @@ def _resolve_clauses(
 
     warnings: list[str] = []
     unknown = tuple(dict.fromkeys(code for code in issue_codes if code not in valid_codes))
-    warnings.extend(f"未知 Issue Code：{code}" for code in unknown)
+    warnings.extend(f"未知问题代码：{code}" for code in unknown)
     if not valid_codes:
         if not unknown:
-            warnings.append("该风险未给出 Issue Code，未关联法规。")
+            warnings.append("该风险未给出问题代码，未关联法规。")
         return valid_codes, tuple(), warnings
 
     bound_codes = {binding.issue_code for binding in catalog.bindings}
     warnings.extend(
-        f"Issue Code 无法规绑定：{code}" for code in valid_codes if code not in bound_codes
+        f"问题代码无法规绑定：{code}" for code in valid_codes if code not in bound_codes
     )
     retired = dict.fromkeys(
-        binding.clause_id
-        for binding in bindings
-        if not clauses[binding.clause_id].effective
+        binding.clause_id for binding in bindings if not clauses[binding.clause_id].effective
     )
     warnings.extend(f"条款已失效，未展示：{clause_id}" for clause_id in retired)
 
@@ -259,15 +255,12 @@ def _resolve_clauses(
     duplicated = tuple(
         dict.fromkeys(
             clause_id
-            for clause_id, count in Counter(
-                binding.clause_id for binding in bindings
-            ).items()
+            for clause_id, count in Counter(binding.clause_id for binding in bindings).items()
             if count > 1
         )
     )
-    warnings.extend(
-        f"有多个 Binding 指向同一条款，仅展示首个：{clause_id}" for clause_id in duplicated
-    )
+    if duplicated:
+        warnings.append("多条规则绑定对应相同法规条款：" + "、".join(duplicated))
     return valid_codes, tuple(results), warnings
 
 
