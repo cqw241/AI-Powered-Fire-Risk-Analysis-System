@@ -18,6 +18,9 @@ from fire_safety.settings import Settings, get_settings
 
 PROMPT_PATH = PROJECT_ROOT / "prompts" / "visual_investigator.md"
 ISSUE_CODES_PATH = PROJECT_ROOT / "data" / "legal" / "issue_codes.json"
+V1_1_ISSUE_CODES_PATH = (
+    PROJECT_ROOT / "data" / "legal" / "extensions" / "v1_1_issue_codes.json"
+)
 ISSUE_CATALOG_PLACEHOLDER = "{{ISSUE_CATALOG}}"
 
 
@@ -65,14 +68,18 @@ def build_visual_prompt(
     prompt_path: str | Path = PROMPT_PATH,
     issue_codes_path: str | Path = ISSUE_CODES_PATH,
 ) -> str:
-    """Load the visual prompt and inject the controlled Issue Code catalog."""
+    """Load the visual prompt and inject the controlled Issue Code catalog.
+
+    The checked-in default catalog includes the v1.1 extension. Callers that
+    pass an explicit issue-code file keep the previous isolated behavior,
+    which is useful for tests and custom deployments.
+    """
 
     try:
         template = Path(prompt_path).read_text(encoding="utf-8")
-        catalog_data = json.loads(Path(issue_codes_path).read_text(encoding="utf-8"))
-        issue_codes = catalog_data["issue_codes"]
-        if not isinstance(issue_codes, list):
-            raise TypeError("issue_codes must be an array")
+        issue_codes = _load_issue_codes(issue_codes_path)
+        if Path(issue_codes_path).resolve() == ISSUE_CODES_PATH.resolve():
+            issue_codes.extend(_load_issue_codes(V1_1_ISSUE_CODES_PATH))
         catalog_lines = []
         for item in issue_codes:
             code = item["code"]
@@ -94,6 +101,16 @@ def build_visual_prompt(
             reason="invalid_prompt_template",
         )
     return template.replace(ISSUE_CATALOG_PLACEHOLDER, "\n".join(catalog_lines))
+
+
+def _load_issue_codes(path: str | Path) -> list[dict[str, Any]]:
+    catalog_data = json.loads(Path(path).read_text(encoding="utf-8"))
+    issue_codes = catalog_data["issue_codes"]
+    if not isinstance(issue_codes, list):
+        raise TypeError("issue_codes must be an array")
+    if not all(isinstance(item, dict) for item in issue_codes):
+        raise TypeError("each issue code must be an object")
+    return list(issue_codes)
 
 
 async def analyze_image(
@@ -197,6 +214,7 @@ def _missing_response_content(cause: Exception | None = None) -> str:
 __all__ = [
     "ISSUE_CODES_PATH",
     "PROMPT_PATH",
+    "V1_1_ISSUE_CODES_PATH",
     "InvalidModelOutputError",
     "QwenConfigurationError",
     "QwenError",
