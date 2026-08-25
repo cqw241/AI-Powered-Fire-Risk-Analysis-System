@@ -1,6 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "visual_investigation.schema.json",
   "title": "VisualInvestigation",
   "type": "object",
   "additionalProperties": false,
@@ -77,8 +75,7 @@
           "items": {
             "type": "string",
             "minLength": 1
-          },
-          "uniqueItems": true
+          }
         }
       }
     },
@@ -132,8 +129,7 @@
           "items": {
             "type": "string",
             "minLength": 1
-          },
-          "uniqueItems": true
+          }
         },
         "limitations": {
           "type": "array",
