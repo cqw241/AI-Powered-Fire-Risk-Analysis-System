@@ -218,6 +218,27 @@ def test_bound_code_with_every_clause_repealed_reports_no_binding(tmp_path) -> N
     assert any("失效" in warning for warning in warnings)
 
 
+def test_duplicate_bindings_to_one_clause_keep_first_and_warn(tmp_path) -> None:
+    # One code bound to the same clause twice: the second binding is dropped
+    # from the visible list, leaving a warning instead of a silent dedup.
+    issue_path, binding_path, clause_path = _write_catalog_files(
+        tmp_path,
+        bindings=[
+            _binding("T-DIRECT", 1),
+            _binding("T-DIRECT", 2, "direct"),
+        ],
+        clause_ids=("T-DIRECT",),
+    )
+    catalog = load_rule_catalog(issue_path, binding_path, clause_path)
+
+    status, warnings = resolve_rule_status(["CODE"], catalog)
+    associations = resolve_legal_associations(["CODE"], catalog)
+
+    assert [item.clause_id for item in associations] == ["T-DIRECT"]
+    assert status is RuleStatus.MATCHED
+    assert any("T-DIRECT" in warning for warning in warnings if "同一条款" in warning)
+
+
 def test_status_never_claims_matched_without_clauses() -> None:
     catalog = load_rule_catalog()
 
@@ -254,7 +275,7 @@ def test_analysis_result_exposes_rule_status() -> None:
                 description="纸箱占据通行空间。",
                 risk_priority="high",
                 risk_mechanism="可能影响疏散。",
-                evidence=[],
+                evidence=[{"text": "纸箱连续占据通行区域。", "bboxes": []}],
                 legal_associations=list(resolve_legal_associations(codes, catalog)),
                 limitations=[],
                 recommended_action=recommended_action(codes, catalog),

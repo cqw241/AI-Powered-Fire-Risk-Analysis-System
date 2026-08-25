@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
+from collections import Counter
 from pathlib import Path
-from typing import TypeAlias
+from typing import Protocol, TypeAlias
 
 from pydantic import ValidationError
 
@@ -23,10 +23,10 @@ from fire_safety.qwen import (
 from fire_safety.rules import (
     RuleCatalog,
     RuleDataError,
-    load_rule_catalog,
+    _resolve_clauses,
+    _rule_status,
+    get_rule_catalog,
     recommended_action,
-    resolve_legal_associations,
-    resolve_rule_status,
 )
 from fire_safety.schemas import (
     AnalysisEvidence,
@@ -39,11 +39,30 @@ from fire_safety.schemas import (
 from fire_safety.settings import Settings
 
 ImageSource: TypeAlias = PreparedImage | bytes | bytearray | str | Path
-QwenAnalyzer: TypeAlias = Callable[..., Awaitable[object]]
+
+
+class QwenAnalyzer(Protocol):
+    """Callable contract for the model stage.
+
+    Implementations always receive ``settings`` by keyword; ``None`` means
+    "use the process-wide settings". The return value is validated by the
+    pipeline, so a test double may return a raw payload instead of a
+    :class:`VisualInvestigation`.
+    """
+
+    async def __call__(
+        self, image: PreparedImage, *, settings: Settings | None = None
+    ) -> object: ...
 
 
 class VisualCleanupError(ValueError):
-    """Raised when a visual result violates a uniqueness invariant."""
+    """Raised when a visual result cannot be cleaned into a usable form.
+
+    Reserved for defects that make the whole response untrustworthy: a
+    duplicated ``finding_id`` destroys the identity key the result is keyed
+    on. Region- and bbox-level defects are cleaned in place instead, so a
+    single bad region never discards a Finding.
+    """
 
 
 async def analyze(
@@ -60,11 +79,16 @@ async def analyze(
     except ImageProcessingError as exc:
         return _error_result(AnalysisStatus.IMAGE_UNUSABLE, str(exc))
 
+    # Resolved before the model call: a broken local rule package is a local
+    # misconfiguration, and discovering it must not cost a paid Qwen request.
+    # 设计文档 §13 buckets local catalog failures under `model_failed`.
     try:
-        if settings is None:
-            raw_visual = await qwen_analyzer(prepared)
-        else:
-            raw_visual = await qwen_analyzer(prepared, settings=settings)
+        catalog = rule_catalog or get_rule_catalog()
+    except RuleDataError as exc:
+        return _error_result(AnalysisStatus.MODEL_FAILED, str(exc))
+
+    try:
+        raw_visual = await qwen_analyzer(prepared, settings=settings)
         visual = _coerce_visual_investigation(raw_visual)
         cleaned_findings = _clean_visual_findings(visual)
     except InvalidModelOutputError as exc:
@@ -74,15 +98,9 @@ async def analyze(
     except ValidationError as exc:
         return _error_result(AnalysisStatus.INVALID_MODEL_OUTPUT, _validation_message(exc))
     except QwenError as exc:
-        status = AnalysisStatus(str(exc.status.value))
-        return _error_result(status, str(exc))
+        return _error_result(AnalysisStatus(exc.status.value), str(exc))
 
-    try:
-        catalog = rule_catalog or load_rule_catalog()
-        findings = _apply_rules(cleaned_findings, catalog)
-    except RuleDataError as exc:
-        return _error_result(AnalysisStatus.MODEL_FAILED, str(exc))
-
+    findings = _apply_rules(cleaned_findings, catalog)
     if not findings:
         return AnalysisResult(
             status=AnalysisStatus.NO_FINDINGS,
@@ -101,22 +119,11 @@ def _coerce_visual_investigation(raw_visual: object) -> VisualInvestigation:
 def _clean_visual_findings(
     visual: VisualInvestigation,
 ) -> tuple[tuple[Finding, list[AnalysisEvidence]], ...]:
-    region_ids = [region.region_id for region in visual.regions]
-    if len(region_ids) != len(set(region_ids)):
-        raise VisualCleanupError("视觉结果包含重复的 region_id")
-
     finding_ids = [finding.finding_id for finding in visual.findings]
     if len(finding_ids) != len(set(finding_ids)):
         raise VisualCleanupError("视觉结果包含重复的 finding_id")
 
-    valid_regions: dict[str, list[int]] = {}
-    for region in visual.regions:
-        try:
-            bbox = list(validate_bbox_1000(region.bbox_1000))
-        except (InvalidBoundingBox, TypeError):
-            continue
-        valid_regions[region.region_id] = bbox
-
+    valid_regions = _valid_regions(visual)
     cleaned: list[tuple[Finding, list[AnalysisEvidence]]] = []
     for finding in visual.findings:
         evidence_items: list[AnalysisEvidence] = []
@@ -131,6 +138,28 @@ def _clean_visual_findings(
     return tuple(cleaned)
 
 
+def _valid_regions(visual: VisualInvestigation) -> dict[str, list[int]]:
+    """Map each trustworthy ``region_id`` to its normalized bbox.
+
+    A duplicated ``region_id`` makes every copy ambiguous — nothing says which
+    bbox an Evidence reference meant — so all copies are dropped rather than
+    silently resolving to the first one. Geometrically invalid bboxes are
+    dropped the same way. In both cases the referencing Finding survives with
+    the offending reference removed, per 设计文档 §7 and §13.
+    """
+
+    occurrences = Counter(region.region_id for region in visual.regions)
+    valid: dict[str, list[int]] = {}
+    for region in visual.regions:
+        if occurrences[region.region_id] > 1:
+            continue
+        try:
+            valid[region.region_id] = list(validate_bbox_1000(region.bbox_1000))
+        except (InvalidBoundingBox, TypeError):
+            continue
+    return valid
+
+
 def _apply_rules(
     cleaned_findings: tuple[tuple[Finding, list[AnalysisEvidence]], ...],
     catalog: RuleCatalog,
@@ -139,8 +168,10 @@ def _apply_rules(
 
     results: list[AnalysisFinding] = []
     for finding, evidence in cleaned_findings:
-        associations = resolve_legal_associations(finding.suggested_issue_codes, catalog)
-        rule_status, warnings = resolve_rule_status(finding.suggested_issue_codes, catalog)
+        _valid, associations, warnings = _resolve_clauses(
+            finding.suggested_issue_codes, catalog
+        )
+        rule_status = _rule_status(_valid, associations)
         results.append(
             AnalysisFinding(
                 finding_id=finding.finding_id,
@@ -173,4 +204,4 @@ def _validation_message(error: ValidationError) -> str:
     return f"Qwen 返回的结构化结果无效：{error.errors()[0]['msg']}"
 
 
-__all__ = ["analyze"]
+__all__ = ["VisualCleanupError", "analyze", "QwenAnalyzer", "ImageSource"]

@@ -29,7 +29,14 @@ class QwenStatus(StrEnum):
 
 
 class QwenError(RuntimeError):
-    """Base error for failures in the model stage."""
+    """Base error for failures in the model stage.
+
+    ``status`` is defined here, not only on the subclasses, so the pipeline's
+    ``except QwenError`` handler can always map a model-stage failure to a
+    public status instead of raising ``AttributeError`` out of the handler.
+    """
+
+    status = QwenStatus.MODEL_FAILED
 
     def __init__(self, message: str, *, reason: str):
         super().__init__(message)

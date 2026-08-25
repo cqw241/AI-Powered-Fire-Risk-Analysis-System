@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+from collections import Counter
+from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Sequence
 
@@ -142,6 +144,19 @@ def load_rule_catalog(
         raise RuleDataError(f"法规规则包结构或引用无效：{exc}") from exc
 
 
+@lru_cache
+def get_rule_catalog() -> RuleCatalog:
+    """Return the process-wide catalog, read from the checked-in data once.
+
+    The three legal JSON files are held in memory for the process lifetime.
+    Callers that need a different data set pass an explicit ``RuleCatalog``
+    rather than paying a disk read and a full cross-reference validation on
+    every analysis.
+    """
+
+    return load_rule_catalog()
+
+
 def resolve_issue_codes(
     suggested_issue_codes: Sequence[str], catalog: RuleCatalog
 ) -> tuple[str, ...]:
@@ -159,38 +174,63 @@ def resolve_rule_status(
     legal list and every dropped clause leaves a warning behind.
     """
 
-    allowed = {item.code for item in catalog.issue_codes}
-    unknown = tuple(dict.fromkeys(code for code in suggested_issue_codes if code not in allowed))
-    warnings = [f"未知 Issue Code：{code}" for code in unknown]
-    valid = resolve_issue_codes(suggested_issue_codes, catalog)
-    if not valid:
-        if not unknown:
-            warnings.append("该风险未给出 Issue Code，未关联法规。")
-        return RuleStatus.NO_VALID_ISSUE_CODE, tuple(warnings)
+    _valid, associations, warnings = _resolve_clauses(suggested_issue_codes, catalog)
+    return _rule_status(_valid, associations), tuple(warnings)
 
-    bound_codes = {binding.issue_code for binding in catalog.bindings}
-    warnings.extend(
-        f"Issue Code 无法规绑定：{code}" for code in valid if code not in bound_codes
-    )
-    clauses = {item.clause_id: item for item in catalog.clauses}
-    retired = dict.fromkeys(
-        binding.clause_id
-        for binding in catalog.bindings
-        if binding.issue_code in valid and not clauses[binding.clause_id].effective
-    )
-    warnings.extend(f"条款已失效，未展示：{clause_id}" for clause_id in retired)
 
-    if not resolve_legal_associations(suggested_issue_codes, catalog):
-        return RuleStatus.NO_BINDING, tuple(warnings)
-    return RuleStatus.MATCHED, tuple(warnings)
+def _rule_status(
+    valid_codes: Sequence[str], associations: Sequence[LegalAssociation]
+) -> RuleStatus:
+    """Derive the status from values already resolved in one pass."""
+
+    if not valid_codes:
+        return RuleStatus.NO_VALID_ISSUE_CODE
+    if not associations:
+        return RuleStatus.NO_BINDING
+    return RuleStatus.MATCHED
 
 
 def resolve_legal_associations(
     issue_codes: Sequence[str], catalog: RuleCatalog
 ) -> tuple[LegalAssociation, ...]:
+    _valid, associations, _warnings = _resolve_clauses(issue_codes, catalog)
+    return associations
+
+
+def _resolve_clauses(
+    issue_codes: Sequence[str], catalog: RuleCatalog
+) -> tuple[tuple[str, ...], tuple[LegalAssociation, ...], list[str]]:
+    """Compute the legal associations and their audit trail in one pass.
+
+    `resolve_rule_status` and `resolve_legal_associations` are called together
+    for every Finding, so both share this single evaluation of the chain
+    Issue Code → Binding → Clause; the warnings include every clause dropped
+    from the visible list, including duplicates and retired clauses.
+    """
+
     valid_codes = resolve_issue_codes(issue_codes, catalog)
     clauses = {item.clause_id: item for item in catalog.clauses}
     bindings = [binding for binding in catalog.bindings if binding.issue_code in valid_codes]
+
+    warnings: list[str] = []
+    unknown = tuple(dict.fromkeys(code for code in issue_codes if code not in valid_codes))
+    warnings.extend(f"未知 Issue Code：{code}" for code in unknown)
+    if not valid_codes:
+        if not unknown:
+            warnings.append("该风险未给出 Issue Code，未关联法规。")
+        return valid_codes, tuple(), warnings
+
+    bound_codes = {binding.issue_code for binding in catalog.bindings}
+    warnings.extend(
+        f"Issue Code 无法规绑定：{code}" for code in valid_codes if code not in bound_codes
+    )
+    retired = dict.fromkeys(
+        binding.clause_id
+        for binding in bindings
+        if not clauses[binding.clause_id].effective
+    )
+    warnings.extend(f"条款已失效，未展示：{clause_id}" for clause_id in retired)
+
     bindings.sort(
         key=lambda item: (0 if item.relation is LegalRelation.DIRECT else 1, item.priority)
     )
@@ -199,10 +239,10 @@ def resolve_legal_associations(
     for binding in bindings:
         if binding.clause_id in seen:
             continue
-        clause = clauses[binding.clause_id]
-        if not clause.effective:
+        if not clauses[binding.clause_id].effective:
             continue
         seen.add(binding.clause_id)
+        clause = clauses[binding.clause_id]
         results.append(
             LegalAssociation(
                 clause_id=clause.clause_id,
@@ -215,7 +255,20 @@ def resolve_legal_associations(
         )
         if len(results) >= catalog.max_visible_clauses_per_finding:
             break
-    return tuple(results)
+
+    duplicated = tuple(
+        dict.fromkeys(
+            clause_id
+            for clause_id, count in Counter(
+                binding.clause_id for binding in bindings
+            ).items()
+            if count > 1
+        )
+    )
+    warnings.extend(
+        f"有多个 Binding 指向同一条款，仅展示首个：{clause_id}" for clause_id in duplicated
+    )
+    return valid_codes, tuple(results), warnings
 
 
 def recommended_action(issue_codes: Sequence[str], catalog: RuleCatalog) -> str:
@@ -267,6 +320,7 @@ __all__ = [
     "RuleBinding",
     "RuleCatalog",
     "RuleDataError",
+    "get_rule_catalog",
     "load_rule_catalog",
     "recommended_action",
     "resolve_issue_codes",
