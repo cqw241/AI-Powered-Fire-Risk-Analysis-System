@@ -2,11 +2,19 @@
 
 from __future__ import annotations
 
+import base64
 import json
 from enum import StrEnum
 from pathlib import Path
+from typing import Any
+
+from openai import AsyncOpenAI, OpenAIError
+from pydantic import ValidationError
 
 from fire_safety import PROJECT_ROOT
+from fire_safety.image import PreparedImage
+from fire_safety.schemas import VisualInvestigation, load_visual_investigation_schema
+from fire_safety.settings import Settings, get_settings
 
 PROMPT_PATH = PROJECT_ROOT / "prompts" / "visual_investigator.md"
 ISSUE_CODES_PATH = PROJECT_ROOT / "data" / "legal" / "issue_codes.json"
@@ -32,6 +40,18 @@ class QwenConfigurationError(QwenError):
     """Raised before a request when required local configuration is missing."""
 
     status = QwenStatus.MODEL_FAILED
+
+
+class QwenRequestError(QwenError):
+    """Raised when the provider request fails."""
+
+    status = QwenStatus.MODEL_FAILED
+
+
+class InvalidModelOutputError(QwenError):
+    """Raised when a provider response cannot satisfy the visual schema."""
+
+    status = QwenStatus.INVALID_MODEL_OUTPUT
 
 
 def build_visual_prompt(
@@ -69,11 +89,100 @@ def build_visual_prompt(
     return template.replace(ISSUE_CATALOG_PLACEHOLDER, "\n".join(catalog_lines))
 
 
+async def analyze_image(
+    image: PreparedImage,
+    settings: Settings | None = None,
+    client: AsyncOpenAI | None = None,
+) -> VisualInvestigation:
+    """Analyze one prepared image using exactly one model completion request."""
+
+    app_settings = settings or get_settings()
+    if not app_settings.qwen_configured:
+        raise QwenConfigurationError(
+            "Qwen 服务配置不完整",
+            reason="missing_qwen_configuration",
+        )
+
+    qwen_client = client or AsyncOpenAI(
+        base_url=app_settings.qwen_base_url,
+        api_key=app_settings.qwen_api_key.get_secret_value(),
+        max_retries=0,
+    )
+    prompt = build_visual_prompt()
+    schema = load_visual_investigation_schema()
+    data_url = _image_data_url(image)
+
+    try:
+        response = await qwen_client.chat.completions.create(
+            model=app_settings.qwen_model,
+            messages=[
+                {"role": "system", "content": prompt},
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "请分析这张消防场景图片。"},
+                        {"type": "image_url", "image_url": {"url": data_url}},
+                    ],
+                },
+            ],
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "visual_investigation",
+                    "strict": True,
+                    "schema": schema,
+                },
+            },
+        )
+    except OpenAIError as exc:
+        raise QwenRequestError(
+            "Qwen 视觉分析请求失败",
+            reason="request_failed",
+        ) from exc
+
+    content = _response_content(response)
+    try:
+        return VisualInvestigation.model_validate_json(content)
+    except (ValidationError, ValueError) as exc:
+        raise InvalidModelOutputError(
+            "Qwen 返回的结构化结果无效",
+            reason="schema_validation_failed",
+        ) from exc
+
+
+def _image_data_url(image: PreparedImage) -> str:
+    payload = base64.b64encode(image.qwen_bytes).decode("ascii")
+    return f"data:{image.media_type};base64,{payload}"
+
+
+def _response_content(response: Any) -> str:
+    try:
+        content = response.choices[0].message.content
+    except (AttributeError, IndexError, TypeError) as exc:
+        return _missing_response_content(exc)
+    if not isinstance(content, str) or not content.strip():
+        return _missing_response_content()
+    return content
+
+
+def _missing_response_content(cause: Exception | None = None) -> str:
+    error = InvalidModelOutputError(
+        "Qwen 响应缺少结构化内容",
+        reason="missing_response_content",
+    )
+    if cause is not None:
+        raise error from cause
+    raise error
+
+
 __all__ = [
     "ISSUE_CODES_PATH",
     "PROMPT_PATH",
+    "InvalidModelOutputError",
     "QwenConfigurationError",
     "QwenError",
+    "QwenRequestError",
     "QwenStatus",
+    "analyze_image",
     "build_visual_prompt",
 ]
