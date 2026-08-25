@@ -211,6 +211,17 @@
       ]
     },
     {
+      "binding_id": "RB-SIGN-OBSCURED-GB55037-6.5.1",
+      "issue_code": "EVACUATION_SIGN_OBSCURED",
+      "clause_id": "GB55037-6.5.1",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认遮挡或改动是否由建筑内部装修造成。",
+        "需确认相关行为是否属于擅自减少、改动、拆除或遮挡。"
+      ]
+    },
+    {
       "binding_id": "RB-SIGN-DEFECT-GLGD21",
       "issue_code": "EVACUATION_SIGN_VISIBLE_DEFECT",
       "clause_id": "GLGD-21",
@@ -375,6 +386,17 @@
       "relation": "conditional",
       "missing_conditions": [
         "需确认该场所是否属于相关单位消防安全管理范围。"
+      ]
+    },
+    {
+      "binding_id": "RB-FACILITY-OBSCURED-GB55037-6.5.1",
+      "issue_code": "FIRE_FACILITY_OBSCURED",
+      "clause_id": "GB55037-6.5.1",
+      "priority": 2,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认遮挡、改动或拆除是否由建筑内部装修造成。",
+        "需确认相关行为是否属于擅自减少、改动、拆除或遮挡。"
       ]
     },
     {
