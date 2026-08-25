@@ -1,0 +1,18 @@
+{
+  "issue_codes": [
+    {
+      "code": "SPRINKLER_OBSTRUCTED",
+      "display_name": "洒水喷头周围存在明显遮挡",
+      "definition": "已明确识别的自动喷水灭火系统洒水喷头周围存在货物、装修构件、管线或其他物体明显遮挡，可能影响洒水效果。",
+      "default_priority": "high",
+      "default_action": "清理喷头周围可能影响洒水覆盖的障碍物，并由专业人员现场确认喷头布置、工作状态和有效覆盖范围。"
+    },
+    {
+      "code": "FIRE_FACILITY_MARKING_OBSCURED_OR_DEFECTIVE",
+      "display_name": "消防设施标识被遮挡或明显难以识别",
+      "definition": "已明确识别的消防设施上或附近的标识存在被物体遮挡、覆盖、明显破损或内容难以识别的可见状态；单张图片未拍到标识不视为标识缺失。",
+      "default_priority": "medium",
+      "default_action": "移除消防设施标识前的遮挡物，修复明显破损或难以识别的标识，并现场核对标识内容、颜色、符号和设置位置。"
+    }
+  ]
+}
