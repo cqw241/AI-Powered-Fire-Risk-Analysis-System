@@ -1,6 +1,6 @@
 # Qwen3.8-27B 消防风险分析系统 MVP
 
-当前已完成 F01：工程和 Gradio 页面骨架，以及 F02：图片解码、EXIF 方向修正、尺寸限制和 bbox 绘制。页面支持单图上传和“开始分析”交互，后续 F03–F05 将依次接入 Qwen、结构化校验、法规规则和最终结果展示。
+当前已完成 F01–F05：工程与 Gradio 页面骨架、图片处理、Qwen 结构化视觉分析、确定性法规关联、Pipeline 和最终结果展示。系统已具备从单图上传到风险结果展示的完整 MVP 链路；F06 仍需补充五类真实图片的人工端到端验收记录。
 
 ## 目标
 
@@ -34,14 +34,14 @@ version = "0.1.0"
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "gradio==6.22.0",
-    "openai",
+    "openai>=1.0,<2",
     "pydantic>=2,<3",
     "pydantic-settings>=2,<3",
-    "pillow",
+    "pillow>=10,<12",
 ]
 
 [dependency-groups]
-dev = ["pytest", "ruff"]
+dev = ["pytest>=8,<9", "ruff>=0.8,<1", "jsonschema>=4,<5"]
 ```
 
 环境变量：
@@ -52,7 +52,7 @@ QWEN_API_KEY=
 QWEN_MODEL=Qwen3.8-27B
 ```
 
-可复制 `.env.example` 为 `.env` 后填写配置。F01 页面不会发起 Qwen 请求，真实密钥不会提交到仓库。
+可复制 `.env.example` 为 `.env` 后填写配置。真实密钥不会提交到仓库。
 
 安装和运行：
 
@@ -144,6 +144,24 @@ bbox 使用 0-1000 归一化坐标：
 
 单个 bbox 无效时忽略该 bbox，不删除整个 Finding。
 
+## 当前实现状态
+
+| Feature | 状态 | 内容 |
+| --- | --- | --- |
+| F01 | 已完成 | Python / uv 工程和 Gradio 页面骨架 |
+| F02 | 已完成 | 图片解码、EXIF 修正、尺寸限制、bbox 校验与绘制 |
+| F03 | 已完成 | Qwen Client、Prompt、Structured Output 和错误映射 |
+| F04 | 已完成 | Issue Code 白名单、Rule Binding、Clause 回填和整改建议 |
+| F05 | 已完成 | Pipeline、AnalysisResult 和最终 Gradio 展示 |
+| F06 | 进行中 | 自动化测试已完成；待补充五类真实图片端到端验收记录 |
+
+当前规则包包含 23 个 Issue Code、25 条法规条款和 54 条规则绑定。测试与静态检查结果：
+
+```text
+92 passed
+ruff check . → All checks passed
+```
+
 ## 开发顺序
 
 1. 工程初始化和 Gradio 页面骨架；
@@ -167,3 +185,5 @@ bbox 使用 0-1000 归一化坐标：
 - 无法规映射的 Finding 仍可展示；
 - Gradio 完整展示图片、风险、法规和整改建议；
 - `uv run pytest` 通过。
+- `uv run ruff check .` 通过；
+- 至少五类真实图片完成上传 → 模型 → 校验 → 规则 → 展示的人工端到端验证。
