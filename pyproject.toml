@@ -20,6 +20,7 @@ dependencies = [
 dev = [
     "pytest>=8,<9",
     "ruff>=0.8,<1",
+    "jsonschema>=4,<5",
 ]
 
 [tool.hatch.build.targets.wheel]

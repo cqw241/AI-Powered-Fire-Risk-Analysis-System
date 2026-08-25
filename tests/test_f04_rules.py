@@ -43,9 +43,7 @@ def test_gb55037_6_5_1_is_reachable_from_obscured_issue_codes(issue_code: str) -
 
     associations = resolve_legal_associations([issue_code], catalog)
 
-    association = next(
-        item for item in associations if item.clause_id == "GB55037-6.5.1"
-    )
+    association = next(item for item in associations if item.clause_id == "GB55037-6.5.1")
     assert association.relation.value == "conditional"
     assert association.missing_conditions
 
@@ -174,9 +172,7 @@ def test_unknown_issue_code_reference_is_rejected(tmp_path) -> None:
 
 @pytest.mark.parametrize("target", ["issue_codes", "bindings", "clauses"])
 def test_duplicate_ids_are_rejected(tmp_path, target) -> None:
-    paths = dict(
-        zip(("issue_codes", "bindings", "clauses"), _write_catalog_files(tmp_path))
-    )
+    paths = dict(zip(("issue_codes", "bindings", "clauses"), _write_catalog_files(tmp_path)))
     payload = json.loads(paths[target].read_text(encoding="utf-8"))
     payload[target].append(dict(payload[target][0]))
     paths[target].write_text(json.dumps(payload), encoding="utf-8")
@@ -198,7 +194,7 @@ def test_repealed_clause_is_excluded_and_reported(tmp_path) -> None:
 
     assert [item.clause_id for item in associations] == ["T-CONDITIONAL"]
     assert status is RuleStatus.MATCHED
-    assert "条款已失效，未展示：T-DIRECT" in warnings
+    assert "条款已失效，未展示：《测试法规》第一条（T-DIRECT）" in warnings
 
 
 def test_bound_code_with_every_clause_repealed_reports_no_binding(tmp_path) -> None:
@@ -218,6 +214,40 @@ def test_bound_code_with_every_clause_repealed_reports_no_binding(tmp_path) -> N
     assert any("失效" in warning for warning in warnings)
 
 
+def test_duplicate_bindings_to_one_clause_keep_first_and_warn(tmp_path) -> None:
+    # One code bound to the same clause twice: the second binding is dropped
+    # from the visible list, leaving a warning instead of a silent dedup.
+    issue_path, binding_path, clause_path = _write_catalog_files(
+        tmp_path,
+        bindings=[
+            _binding("T-DIRECT", 1),
+            _binding("T-DIRECT", 2, "direct"),
+        ],
+        clause_ids=("T-DIRECT",),
+    )
+    catalog = load_rule_catalog(issue_path, binding_path, clause_path)
+
+    status, warnings = resolve_rule_status(["CODE"], catalog)
+    associations = resolve_legal_associations(["CODE"], catalog)
+
+    assert [item.clause_id for item in associations] == ["T-DIRECT"]
+    assert status is RuleStatus.MATCHED
+    assert warnings.count("多条规则绑定对应相同法规条款：《测试法规》第一条（T-DIRECT）") == 1
+
+
+def test_duplicate_clause_warnings_are_aggregated_for_multiple_issue_codes() -> None:
+    catalog = load_rule_catalog()
+
+    _status, warnings = resolve_rule_status(["PASSAGE_OBSTRUCTED", "EXIT_AREA_BLOCKED"], catalog)
+
+    duplicate_warnings = [
+        warning for warning in warnings if warning.startswith("多条规则绑定对应相同法规条款")
+    ]
+    assert len(duplicate_warnings) == 1
+    assert "XFF-28" in duplicate_warnings[0]
+    assert "GB55037-7.1.5" in duplicate_warnings[0]
+
+
 def test_status_never_claims_matched_without_clauses() -> None:
     catalog = load_rule_catalog()
 
@@ -229,9 +259,7 @@ def test_status_never_claims_matched_without_clauses() -> None:
 
 def test_example_result_stays_in_sync_with_the_rule_catalog() -> None:
     example_path = PROJECT_ROOT / "examples" / "analysis_result.example.json"
-    result = AnalysisResult.model_validate(
-        json.loads(example_path.read_text(encoding="utf-8"))
-    )
+    result = AnalysisResult.model_validate(json.loads(example_path.read_text(encoding="utf-8")))
     catalog = load_rule_catalog()
     finding = result.findings[0]
 
@@ -254,7 +282,7 @@ def test_analysis_result_exposes_rule_status() -> None:
                 description="纸箱占据通行空间。",
                 risk_priority="high",
                 risk_mechanism="可能影响疏散。",
-                evidence=[],
+                evidence=[{"text": "纸箱连续占据通行区域。", "bboxes": []}],
                 legal_associations=list(resolve_legal_associations(codes, catalog)),
                 limitations=[],
                 recommended_action=recommended_action(codes, catalog),
@@ -266,7 +294,7 @@ def test_analysis_result_exposes_rule_status() -> None:
 
     finding = result.findings[0]
     assert finding.rule_status is RuleStatus.MATCHED
-    assert finding.rule_warnings == ["未知 Issue Code：BOGUS"]
+    assert finding.rule_warnings == ["未知问题代码：BOGUS"]
     assert len(finding.legal_associations) == 3
 
 

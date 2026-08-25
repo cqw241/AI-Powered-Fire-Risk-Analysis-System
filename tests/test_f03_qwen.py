@@ -163,6 +163,15 @@ def test_invalid_structured_content_maps_to_invalid_model_output(content: str) -
     assert error.value.reason == "schema_validation_failed"
 
 
+def test_array_wrapped_valid_content_is_unwrapped() -> None:
+    wrapped = f"[{valid_response_json()}]"
+
+    investigation = run_analysis(FakeCompletions(content=wrapped))
+
+    assert investigation.findings[0].finding_id == "F1"
+    assert investigation.scene_summary == VALID_VISUAL_OUTPUT["scene_summary"]
+
+
 @pytest.mark.parametrize("content", ["", None, []])
 def test_missing_response_content_maps_to_invalid_model_output(content: Any) -> None:
     completions = FakeCompletions(content=content)

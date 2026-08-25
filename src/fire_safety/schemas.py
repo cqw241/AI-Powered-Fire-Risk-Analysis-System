@@ -19,6 +19,7 @@ from pydantic import (
 from fire_safety import PROJECT_ROOT
 
 VISUAL_SCHEMA_PATH = PROJECT_ROOT / "schemas" / "visual_investigation.schema.json"
+ANALYSIS_SCHEMA_PATH = PROJECT_ROOT / "schemas" / "analysis_result.schema.json"
 
 NonEmptyStr: TypeAlias = Annotated[
     str,
@@ -134,7 +135,7 @@ class AnalysisFinding(VisualModel):
     description: NonEmptyStr
     risk_priority: RiskPriority
     risk_mechanism: NonEmptyStr
-    evidence: list[AnalysisEvidence]
+    evidence: Annotated[list[AnalysisEvidence], Field(min_length=1)]
     legal_associations: list[LegalAssociation]
     limitations: list[NonEmptyStr]
     recommended_action: NonEmptyStr
@@ -159,21 +160,45 @@ class AnalysisResult(VisualModel):
     message: NonEmptyStr | None = None
     findings: list[AnalysisFinding]
 
+    def to_payload(self) -> dict[str, object]:
+        """Serialize to the canonical ``analysis_result.schema.json`` payload.
+
+        ``message`` is omitted rather than emitted as ``null``: the checked-in
+        schema declares it optional and typed ``string``, and forbids
+        additional properties. Every consumer that serializes a result must go
+        through here so the wire format stays schema-valid.
+        """
+
+        return self.model_dump(mode="json", exclude_none=True)
+
 
 def load_visual_investigation_schema(
     path: str | Path = VISUAL_SCHEMA_PATH,
 ) -> dict[str, object]:
     """Load the checked-in JSON Schema sent to the model provider."""
 
+    return _load_schema(path, "visual investigation")
+
+
+def load_analysis_result_schema(
+    path: str | Path = ANALYSIS_SCHEMA_PATH,
+) -> dict[str, object]:
+    """Load the checked-in JSON Schema describing the pipeline result."""
+
+    return _load_schema(path, "analysis result")
+
+
+def _load_schema(path: str | Path, label: str) -> dict[str, object]:
     schema_path = Path(path)
     with schema_path.open(encoding="utf-8") as schema_file:
         schema = json.load(schema_file)
     if not isinstance(schema, dict):
-        raise ValueError("visual investigation schema must be a JSON object")
+        raise ValueError(f"{label} schema must be a JSON object")
     return schema
 
 
 __all__ = [
+    "ANALYSIS_SCHEMA_PATH",
     "Evidence",
     "AnalysisFinding",
     "AnalysisEvidence",
@@ -188,5 +213,6 @@ __all__ = [
     "VISUAL_SCHEMA_PATH",
     "VisualInvestigation",
     "VisualRegion",
+    "load_analysis_result_schema",
     "load_visual_investigation_schema",
 ]

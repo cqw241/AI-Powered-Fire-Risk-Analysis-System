@@ -29,7 +29,14 @@ class QwenStatus(StrEnum):
 
 
 class QwenError(RuntimeError):
-    """Base error for failures in the model stage."""
+    """Base error for failures in the model stage.
+
+    ``status`` is defined here, not only on the subclasses, so the pipeline's
+    ``except QwenError`` handler can always map a model-stage failure to a
+    public status instead of raising ``AttributeError`` out of the handler.
+    """
+
+    status = QwenStatus.MODEL_FAILED
 
     def __init__(self, message: str, *, reason: str):
         super().__init__(message)
@@ -142,7 +149,19 @@ async def analyze_image(
 
     content = _response_content(response)
     try:
-        return VisualInvestigation.model_validate_json(content)
+        payload = json.loads(content)
+    except json.JSONDecodeError as exc:
+        raise InvalidModelOutputError(
+            "Qwen 返回的结构化结果无效",
+            reason="schema_validation_failed",
+        ) from exc
+    # DashScope OpenAI-compatible mode has been observed wrapping the single
+    # structured object in a one-element array; exactly-one-element arrays are
+    # normalized, anything else reaches the validator and is reported as-is.
+    if isinstance(payload, list) and len(payload) == 1 and isinstance(payload[0], dict):
+        payload = payload[0]
+    try:
+        return VisualInvestigation.model_validate(payload)
     except (ValidationError, ValueError) as exc:
         raise InvalidModelOutputError(
             "Qwen 返回的结构化结果无效",

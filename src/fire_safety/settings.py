@@ -5,12 +5,15 @@ from functools import lru_cache
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from fire_safety import PROJECT_ROOT
+
 
 class Settings(BaseSettings):
     """Runtime settings loaded from environment variables and an optional .env file."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        # Anchor to the project root so the file is found regardless of CWD.
+        env_file=str(PROJECT_ROOT / ".env"),
         env_file_encoding="utf-8",
         extra="ignore",
     )
