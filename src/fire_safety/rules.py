@@ -19,9 +19,14 @@ from fire_safety.schemas import (
 )
 
 LEGAL_DATA_DIR = PROJECT_ROOT / "data" / "legal"
+LEGAL_EXTENSIONS_DIR = LEGAL_DATA_DIR / "extensions"
 ISSUE_CODES_PATH = LEGAL_DATA_DIR / "issue_codes.json"
 RULE_BINDINGS_PATH = LEGAL_DATA_DIR / "rule_bindings.json"
 CLAUSES_PATH = LEGAL_DATA_DIR / "clauses.json"
+V1_1_ISSUE_CODES_PATH = LEGAL_EXTENSIONS_DIR / "v1_1_issue_codes.json"
+V1_1_RULE_BINDINGS_PATH = LEGAL_EXTENSIONS_DIR / "v1_1_rule_bindings.json"
+V1_1_CLAUSES_PATH = LEGAL_EXTENSIONS_DIR / "v1_1_clauses.json"
+DEFAULT_CATALOG_ID = "cn-mainland-v1.1"
 
 NonEmptyStr = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
@@ -121,19 +126,47 @@ def load_rule_catalog(
     issue_codes_path: str | Path = ISSUE_CODES_PATH,
     bindings_path: str | Path = RULE_BINDINGS_PATH,
     clauses_path: str | Path = CLAUSES_PATH,
+    *,
+    include_extensions: bool | None = None,
 ) -> RuleCatalog:
-    """Load and validate the checked-in legal rule package."""
+    """Load and validate the legal rule package.
+
+    The checked-in default catalog automatically merges the v1.1 extension
+    files. Explicit test/custom paths remain isolated unless callers opt in
+    with ``include_extensions=True``.
+    """
 
     issue_payload = _read_json(issue_codes_path)
     binding_payload = _read_json(bindings_path)
     clause_payload = _read_json(clauses_path)
+    if include_extensions is None:
+        include_extensions = (
+            _same_path(issue_codes_path, ISSUE_CODES_PATH)
+            and _same_path(bindings_path, RULE_BINDINGS_PATH)
+            and _same_path(clauses_path, CLAUSES_PATH)
+        )
+
     try:
+        if include_extensions:
+            issue_payload = _merge_array_payloads(
+                issue_payload, _read_json(V1_1_ISSUE_CODES_PATH), "issue_codes"
+            )
+            binding_payload = _merge_array_payloads(
+                binding_payload, _read_json(V1_1_RULE_BINDINGS_PATH), "bindings"
+            )
+            clause_payload = _merge_array_payloads(
+                clause_payload, _read_json(V1_1_CLAUSES_PATH), "clauses"
+            )
         return RuleCatalog.from_raw(
             issue_payload,
             binding_payload,
             clause_payload,
             schema_version=_string_field(clause_payload, "schema_version", "1.0"),
-            catalog_id=_string_field(clause_payload, "catalog_id", "cn-mainland-v1-clauses"),
+            catalog_id=(
+                DEFAULT_CATALOG_ID
+                if include_extensions
+                else _string_field(clause_payload, "catalog_id", "cn-mainland-v1-clauses")
+            ),
             max_visible_clauses_per_finding=_int_field(
                 binding_payload, "max_visible_clauses_per_finding", 3
             ),
@@ -144,13 +177,7 @@ def load_rule_catalog(
 
 @lru_cache
 def get_rule_catalog() -> RuleCatalog:
-    """Return the process-wide catalog, read from the checked-in data once.
-
-    The three legal JSON files are held in memory for the process lifetime.
-    Callers that need a different data set pass an explicit ``RuleCatalog``
-    rather than paying a disk read and a full cross-reference validation on
-    every analysis.
-    """
+    """Return the process-wide merged default catalog, read once per process."""
 
     return load_rule_catalog()
 
@@ -213,7 +240,7 @@ def _resolve_clauses(
 
     warnings: list[str] = []
     unknown = tuple(dict.fromkeys(code for code in issue_codes if code not in valid_codes))
-    # 未知代码不在 issue_codes.json 中，没有 display_name 可展示。
+    # 未知代码不在 issue_codes.json / extension 中，没有 display_name 可展示。
     warnings.extend(f"未知问题代码：{code}" for code in unknown)
     if not valid_codes:
         if not unknown:
@@ -303,6 +330,18 @@ def _array_payload(payload: object, field: str) -> object:
     return payload[field]
 
 
+def _merge_array_payloads(base: object, extension: object, field: str) -> dict[str, object]:
+    if not isinstance(base, dict):
+        raise ValueError(f"base payload for {field} must be an object")
+    merged = dict(base)
+    merged[field] = [*_array_payload(base, field), *_array_payload(extension, field)]
+    return merged
+
+
+def _same_path(value: str | Path, expected: Path) -> bool:
+    return Path(value).resolve() == expected.resolve()
+
+
 def _string_field(payload: object, field: str, default: str) -> str:
     return payload.get(field, default) if isinstance(payload, dict) else default
 
@@ -319,8 +358,13 @@ def _validate_unique(items: Sequence[BaseModel], field: str) -> None:
 
 __all__ = [
     "CLAUSES_PATH",
+    "DEFAULT_CATALOG_ID",
     "ISSUE_CODES_PATH",
+    "LEGAL_EXTENSIONS_DIR",
     "RULE_BINDINGS_PATH",
+    "V1_1_CLAUSES_PATH",
+    "V1_1_ISSUE_CODES_PATH",
+    "V1_1_RULE_BINDINGS_PATH",
     "Clause",
     "IssueCodeDefinition",
     "RuleBinding",
