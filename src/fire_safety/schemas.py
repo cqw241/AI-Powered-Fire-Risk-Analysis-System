@@ -93,6 +93,73 @@ class VisualInvestigation(VisualModel):
     findings: list[Finding]
 
 
+class LegalRelation(StrEnum):
+    """How directly a clause relates to visible evidence."""
+
+    DIRECT = "direct"
+    CONDITIONAL = "conditional"
+
+
+class LegalAssociation(VisualModel):
+    """A clause deterministically resolved from an Issue Code."""
+
+    clause_id: NonEmptyStr
+    source_name: NonEmptyStr
+    clause_number: NonEmptyStr
+    clause_text: NonEmptyStr
+    relation: LegalRelation
+    missing_conditions: list[NonEmptyStr]
+
+
+class AnalysisEvidence(VisualModel):
+    """Evidence projected to pixel-independent bbox payloads for the result."""
+
+    text: NonEmptyStr
+    bboxes: list[NormalizedBBox]
+
+
+class RuleStatus(StrEnum):
+    """Outcome of applying the local rule catalog to a Finding."""
+
+    MATCHED = "matched"
+    NO_VALID_ISSUE_CODE = "no_valid_issue_code"
+    NO_BINDING = "no_binding"
+
+
+class AnalysisFinding(VisualModel):
+    """Finding enriched with deterministic legal associations."""
+
+    finding_id: NonEmptyStr
+    title: NonEmptyStr
+    description: NonEmptyStr
+    risk_priority: RiskPriority
+    risk_mechanism: NonEmptyStr
+    evidence: list[AnalysisEvidence]
+    legal_associations: list[LegalAssociation]
+    limitations: list[NonEmptyStr]
+    recommended_action: NonEmptyStr
+    rule_status: RuleStatus
+    rule_warnings: list[NonEmptyStr]
+
+
+class AnalysisStatus(StrEnum):
+    """Top-level analysis lifecycle status values."""
+
+    COMPLETED = "completed"
+    NO_FINDINGS = "no_findings"
+    IMAGE_UNUSABLE = "image_unusable"
+    MODEL_FAILED = "model_failed"
+    INVALID_MODEL_OUTPUT = "invalid_model_output"
+
+
+class AnalysisResult(VisualModel):
+    """Public result envelope consumed by the future pipeline and UI."""
+
+    status: AnalysisStatus
+    message: NonEmptyStr | None = None
+    findings: list[AnalysisFinding]
+
+
 def load_visual_investigation_schema(
     path: str | Path = VISUAL_SCHEMA_PATH,
 ) -> dict[str, object]:
@@ -108,9 +175,16 @@ def load_visual_investigation_schema(
 
 __all__ = [
     "Evidence",
+    "AnalysisFinding",
+    "AnalysisEvidence",
+    "AnalysisResult",
+    "AnalysisStatus",
     "Finding",
+    "LegalAssociation",
+    "LegalRelation",
     "NormalizedBBox",
     "RiskPriority",
+    "RuleStatus",
     "VISUAL_SCHEMA_PATH",
     "VisualInvestigation",
     "VisualRegion",

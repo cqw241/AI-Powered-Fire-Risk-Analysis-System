@@ -116,7 +116,9 @@
         "evidence",
         "legal_associations",
         "limitations",
-        "recommended_action"
+        "recommended_action",
+        "rule_status",
+        "rule_warnings"
       ],
       "properties": {
         "finding_id": {
@@ -167,6 +169,21 @@
         "recommended_action": {
           "type": "string",
           "minLength": 1
+        },
+        "rule_status": {
+          "type": "string",
+          "enum": [
+            "matched",
+            "no_valid_issue_code",
+            "no_binding"
+          ]
+        },
+        "rule_warnings": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     }
