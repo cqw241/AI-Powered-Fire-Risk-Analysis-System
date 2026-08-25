@@ -127,24 +127,18 @@ def load_rule_catalog(
     bindings_path: str | Path = RULE_BINDINGS_PATH,
     clauses_path: str | Path = CLAUSES_PATH,
     *,
-    include_extensions: bool | None = None,
+    include_extensions: bool = False,
 ) -> RuleCatalog:
-    """Load and validate the legal rule package.
+    """Load and validate a legal rule package.
 
-    The checked-in default catalog automatically merges the v1.1 extension
-    files. Explicit test/custom paths remain isolated unless callers opt in
-    with ``include_extensions=True``.
+    ``load_rule_catalog()`` keeps the v1 base package behavior for tests and
+    custom callers. Runtime code uses ``get_rule_catalog()``, which explicitly
+    enables the checked-in v1.1 extension pack.
     """
 
     issue_payload = _read_json(issue_codes_path)
     binding_payload = _read_json(bindings_path)
     clause_payload = _read_json(clauses_path)
-    if include_extensions is None:
-        include_extensions = (
-            _same_path(issue_codes_path, ISSUE_CODES_PATH)
-            and _same_path(bindings_path, RULE_BINDINGS_PATH)
-            and _same_path(clauses_path, CLAUSES_PATH)
-        )
 
     try:
         if include_extensions:
@@ -177,9 +171,9 @@ def load_rule_catalog(
 
 @lru_cache
 def get_rule_catalog() -> RuleCatalog:
-    """Return the process-wide merged default catalog, read once per process."""
+    """Return the process-wide merged v1.1 runtime catalog."""
 
-    return load_rule_catalog()
+    return load_rule_catalog(include_extensions=True)
 
 
 def resolve_issue_codes(
@@ -192,12 +186,7 @@ def resolve_issue_codes(
 def resolve_rule_status(
     suggested_issue_codes: Sequence[str], catalog: RuleCatalog
 ) -> tuple[RuleStatus, tuple[str, ...]]:
-    """Return an auditable status and warnings for a Finding's Issue Codes.
-
-    The status is derived from the associations actually produced by
-    `resolve_legal_associations`, so `matched` always implies a non-empty
-    legal list and every dropped clause leaves a warning behind.
-    """
+    """Return an auditable status and warnings for a Finding's Issue Codes."""
 
     _valid, associations, warnings = _resolve_clauses(suggested_issue_codes, catalog)
     return _rule_status(_valid, associations), tuple(warnings)
@@ -225,13 +214,7 @@ def resolve_legal_associations(
 def _resolve_clauses(
     issue_codes: Sequence[str], catalog: RuleCatalog
 ) -> tuple[tuple[str, ...], tuple[LegalAssociation, ...], list[str]]:
-    """Compute the legal associations and their audit trail in one pass.
-
-    `resolve_rule_status` and `resolve_legal_associations` are called together
-    for every Finding, so both share this single evaluation of the chain
-    Issue Code → Binding → Clause; the warnings include every clause dropped
-    from the visible list, including duplicates and retired clauses.
-    """
+    """Compute legal associations and their audit trail in one pass."""
 
     valid_codes = resolve_issue_codes(issue_codes, catalog)
     clauses = {item.clause_id: item for item in catalog.clauses}
@@ -240,7 +223,6 @@ def _resolve_clauses(
 
     warnings: list[str] = []
     unknown = tuple(dict.fromkeys(code for code in issue_codes if code not in valid_codes))
-    # 未知代码不在 issue_codes.json / extension 中，没有 display_name 可展示。
     warnings.extend(f"未知问题代码：{code}" for code in unknown)
     if not valid_codes:
         if not unknown:
@@ -336,10 +318,6 @@ def _merge_array_payloads(base: object, extension: object, field: str) -> dict[s
     merged = dict(base)
     merged[field] = [*_array_payload(base, field), *_array_payload(extension, field)]
     return merged
-
-
-def _same_path(value: str | Path, expected: Path) -> bool:
-    return Path(value).resolve() == expected.resolve()
 
 
 def _string_field(payload: object, field: str, default: str) -> str:
