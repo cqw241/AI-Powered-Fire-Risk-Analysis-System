@@ -208,10 +208,12 @@ def _resolve_clauses(
 
     valid_codes = resolve_issue_codes(issue_codes, catalog)
     clauses = {item.clause_id: item for item in catalog.clauses}
+    display_names = {item.code: item.display_name for item in catalog.issue_codes}
     bindings = [binding for binding in catalog.bindings if binding.issue_code in valid_codes]
 
     warnings: list[str] = []
     unknown = tuple(dict.fromkeys(code for code in issue_codes if code not in valid_codes))
+    # 未知代码不在 issue_codes.json 中，没有 display_name 可展示。
     warnings.extend(f"未知问题代码：{code}" for code in unknown)
     if not valid_codes:
         if not unknown:
@@ -220,12 +222,16 @@ def _resolve_clauses(
 
     bound_codes = {binding.issue_code for binding in catalog.bindings}
     warnings.extend(
-        f"问题代码无法规绑定：{code}" for code in valid_codes if code not in bound_codes
+        f"问题代码无法规绑定：{code}（{display_names[code]}）"
+        for code in valid_codes
+        if code not in bound_codes
     )
     retired = dict.fromkeys(
         binding.clause_id for binding in bindings if not clauses[binding.clause_id].effective
     )
-    warnings.extend(f"条款已失效，未展示：{clause_id}" for clause_id in retired)
+    warnings.extend(
+        f"条款已失效，未展示：{_clause_label(clauses[clause_id])}" for clause_id in retired
+    )
 
     bindings.sort(
         key=lambda item: (0 if item.relation is LegalRelation.DIRECT else 1, item.priority)
@@ -260,8 +266,15 @@ def _resolve_clauses(
         )
     )
     if duplicated:
-        warnings.append("多条规则绑定对应相同法规条款：" + "、".join(duplicated))
+        labels = "、".join(_clause_label(clauses[clause_id]) for clause_id in duplicated)
+        warnings.append("多条规则绑定对应相同法规条款：" + labels)
     return valid_codes, tuple(results), warnings
+
+
+def _clause_label(clause: Clause) -> str:
+    """Human-readable clause citation: 《source_name》clause_number（clause_id）."""
+
+    return f"《{clause.source_name}》{clause.clause_number}（{clause.clause_id}）"
 
 
 def recommended_action(issue_codes: Sequence[str], catalog: RuleCatalog) -> str:

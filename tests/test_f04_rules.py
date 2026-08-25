@@ -194,7 +194,7 @@ def test_repealed_clause_is_excluded_and_reported(tmp_path) -> None:
 
     assert [item.clause_id for item in associations] == ["T-CONDITIONAL"]
     assert status is RuleStatus.MATCHED
-    assert "条款已失效，未展示：T-DIRECT" in warnings
+    assert "条款已失效，未展示：《测试法规》第一条（T-DIRECT）" in warnings
 
 
 def test_bound_code_with_every_clause_repealed_reports_no_binding(tmp_path) -> None:
@@ -232,7 +232,7 @@ def test_duplicate_bindings_to_one_clause_keep_first_and_warn(tmp_path) -> None:
 
     assert [item.clause_id for item in associations] == ["T-DIRECT"]
     assert status is RuleStatus.MATCHED
-    assert warnings.count("多条规则绑定对应相同法规条款：T-DIRECT") == 1
+    assert warnings.count("多条规则绑定对应相同法规条款：《测试法规》第一条（T-DIRECT）") == 1
 
 
 def test_duplicate_clause_warnings_are_aggregated_for_multiple_issue_codes() -> None:
