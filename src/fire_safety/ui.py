@@ -715,6 +715,11 @@ def build_app(settings: Settings | None = None) -> gr.Blocks:
         async def on_analyze(image_path: str | None) -> tuple[Image.Image | None, str]:
             return await _run_analysis_event(image_path, app_settings)
 
+        def clear_analysis_outputs() -> tuple[None, str]:
+            """Clear results whenever the input image changes or is cleared."""
+
+            return None, _EMPTY_HINT_HTML
+
         # show_progress="hidden": 关闭 Gradio 的队列进度遮罩与右下角
         # "processing | 已用时/预估总时长" 计时器；加载期间的反馈由页面自带的
         # 六阶段视觉加载态承担（见 render_loading_html）。
@@ -728,8 +733,13 @@ def build_app(settings: Settings | None = None) -> gr.Blocks:
             outputs=[annotated_output, result_area],
             show_progress="hidden",
         )
+        image_input.change(
+            clear_analysis_outputs,
+            outputs=[annotated_output, result_area],
+            show_progress="hidden",
+        )
         clear_button.click(
-            lambda: (None, _EMPTY_HINT_HTML),
+            clear_analysis_outputs,
             outputs=[annotated_output, result_area],
             show_progress="hidden",
         )
