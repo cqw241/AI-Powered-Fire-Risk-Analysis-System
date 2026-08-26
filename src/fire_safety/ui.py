@@ -77,6 +77,17 @@ def _render_top_banner_html(path: str | Path = _TOP_BANNER_PATH) -> str:
 
 _TOP_BANNER_HTML = _render_top_banner_html()
 
+_START_SCAN_JS = """() => {
+  const sourceImage = document.getElementById("source_image");
+  if (sourceImage?.querySelector("img")) {
+    sourceImage.classList.add("frs-scanning");
+  }
+}"""
+
+_STOP_SCAN_JS = """() => {
+  document.getElementById("source_image")?.classList.remove("frs-scanning");
+}"""
+
 _CSS = (
     f".frs {{ font-family: {_FONT_STACK}; }}"
     + """
@@ -112,6 +123,43 @@ _CSS = (
   min-width: 0;
 }
 #result_area { min-height: 200px; }
+
+/* The scan line is a transient client-side overlay. It never changes the
+   uploaded image or the annotated image returned by the analysis pipeline. */
+#source_image.frs-scanning .image-container {
+  position: relative;
+  overflow: hidden;
+}
+#source_image.frs-scanning .image-container::after {
+  content: "";
+  position: absolute;
+  z-index: 5;
+  top: 0;
+  right: 5%;
+  left: 5%;
+  height: 18%;
+  pointer-events: none;
+  opacity: .68;
+  background: linear-gradient(
+    to bottom,
+    rgba(56, 189, 248, 0) 0%,
+    rgba(56, 189, 248, .06) 42%,
+    rgba(125, 211, 252, .28) 68%,
+    rgba(186, 230, 253, .72) 72%,
+    rgba(56, 189, 248, .12) 78%,
+    rgba(56, 189, 248, 0) 100%
+  );
+  filter: drop-shadow(0 0 7px rgba(56, 189, 248, .3));
+  transform: translateY(-120%);
+  animation: frs-ai-scan 3.8s linear infinite;
+}
+@keyframes frs-ai-scan {
+  from { transform: translateY(-120%); }
+  to { transform: translateY(560%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #source_image.frs-scanning .image-container::after { animation: none; }
+}
 
 /* top_banner 的 elem 落在 Gradio `.block` 上。实测 (Gradio 6.22):
    `.main` 有 padding 16px 32px 且可能居中, 故用 100vw + calc(50% - 50vw)
@@ -699,6 +747,7 @@ def build_app(settings: Settings | None = None) -> gr.Blocks:
                     label="上传消防场景图片",
                     type="filepath",
                     sources=["upload", "clipboard"],
+                    elem_id="source_image",
                 )
                 with gr.Row():
                     analyze_button = gr.Button("开始分析", variant="primary")
@@ -722,25 +771,29 @@ def build_app(settings: Settings | None = None) -> gr.Blocks:
         # show_progress="hidden": 关闭 Gradio 的队列进度遮罩与右下角
         # "processing | 已用时/预估总时长" 计时器；加载期间的反馈由页面自带的
         # 六阶段视觉加载态承担（见 render_loading_html）。
-        analyze_button.click(
+        analysis_event = analyze_button.click(
             render_loading_html,
             outputs=result_area,
             show_progress="hidden",
+            js=_START_SCAN_JS,
         ).then(
             on_analyze,
             inputs=image_input,
             outputs=[annotated_output, result_area],
             show_progress="hidden",
         )
+        analysis_event.then(fn=None, js=_STOP_SCAN_JS)
         image_input.change(
             clear_analysis_outputs,
             outputs=[annotated_output, result_area],
             show_progress="hidden",
+            js=_STOP_SCAN_JS,
         )
         clear_button.click(
             clear_analysis_outputs,
             outputs=[annotated_output, result_area],
             show_progress="hidden",
+            js=_STOP_SCAN_JS,
         )
 
     return app
