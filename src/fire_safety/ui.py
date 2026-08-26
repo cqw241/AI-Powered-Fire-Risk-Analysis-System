@@ -437,10 +437,11 @@ def render_loading_html() -> str:
 <style>
   .frs-loading {{
     --loading-heading: #0f172a;
-    --loading-ink: #f8fafc;
-    --loading-muted: #a7b0bd;
-    --loading-panel: #202224;
-    --loading-accent: #f5f7fa;
+    --loading-ink: #0f172a;
+    --loading-muted: #475569;
+    --loading-panel: #ffffff;
+    --loading-panel-border: rgba(15, 23, 42, .14);
+    --loading-accent: #0f172a;
     color: var(--loading-heading);
     min-height: 420px;
     padding: 10px 0 0;
@@ -456,7 +457,7 @@ def render_loading_html() -> str:
   .frs-loading-panel {{
     max-width: 560px;
     padding: 24px 24px 20px;
-    border: 1px solid rgba(255, 255, 255, .06);
+    border: 1px solid var(--loading-panel-border);
     border-radius: 28px;
     background: var(--loading-panel);
     box-shadow: 0 18px 42px rgba(15, 23, 42, .16);
@@ -503,7 +504,7 @@ def render_loading_html() -> str:
     place-items: center;
   }}
   .frs-loading-dot {{
-    color: #e2e8f0 !important;
+    color: var(--loading-ink) !important;
     animation: frs-loading-breathe 5s ease-in-out both;
     animation-delay: calc(var(--frs-stage-index) * 5s);
   }}
@@ -551,6 +552,15 @@ def render_loading_html() -> str:
   }}
   .frs-loading-status-final {{
     animation: frs-loading-status-final 1.2s ease 29.7s both !important;
+  }}
+  @media (prefers-color-scheme: dark) {{
+    .frs-loading {{
+      --loading-ink: #f8fafc;
+      --loading-muted: #a7b0bd;
+      --loading-panel: #202224;
+      --loading-panel-border: rgba(255, 255, 255, .06);
+      --loading-accent: #f5f7fa;
+    }}
   }}
   @keyframes frs-loading-stage-focus {{
     0%, 8% {{ opacity: .82; transform: translateX(0); }}
