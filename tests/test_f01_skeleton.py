@@ -26,7 +26,10 @@ def test_loading_state_renders_six_visual_stages() -> None:
     assert "color: var(--loading-ink) !important;" in loading
     assert ".frs-loading-status > span {" in loading
     assert "color: var(--loading-muted) !important;" in loading
-    assert "color: #e2e8f0 !important;" in loading
+    assert "--loading-panel: #ffffff;" in loading
+    assert "--loading-ink: #0f172a;" in loading
+    assert "@media (prefers-color-scheme: dark)" in loading
+    assert "--loading-panel: #202224;" in loading
     assert "0%, 8% { transform: scale(1); opacity: .95;" in loading
 
 
