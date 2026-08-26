@@ -17,7 +17,6 @@ from typing import Any
 import gradio as gr
 from PIL import Image
 
-from fire_safety import PROJECT_ROOT
 from fire_safety.image import ImageProcessingError, PreparedImage, draw_bboxes, prepare_image
 from fire_safety.pipeline import analyze
 from fire_safety.schemas import (
@@ -37,7 +36,7 @@ _FONT_STACK = (
     '"Source Han Sans SC", "Noto Sans SC", "Helvetica Neue", Arial, sans-serif'
 )
 _FONT_MONO = 'ui-monospace, "SF Mono", Menlo, Consolas, "Sarasa Mono SC", monospace'
-_TOP_BANNER_PATH = PROJECT_ROOT / "data" / "images" / "顶部.png"
+_TOP_BANNER_PATH = Path(__file__).resolve().parent / "assets" / "top_banner.png"
 
 _THEME = gr.themes.Base(
     primary_hue="orange",
