@@ -30,3 +30,36 @@ def test_top_banner_renders_the_branding_asset() -> None:
     assert 'class="frs-top-banner"' in banner
     assert 'alt="佛山市消防救援局' in banner
     assert "data:image/png;base64," in banner
+
+
+def test_upload_change_clears_previous_analysis_outputs() -> None:
+    app = build_app()
+
+    components = {
+        component_id: component
+        for component_id, component in app.blocks.items()
+    }
+    image_input_id = next(
+        component_id
+        for component_id, component in components.items()
+        if getattr(component, "label", None) == "上传消防场景图片"
+    )
+    annotated_output_id = next(
+        component_id
+        for component_id, component in components.items()
+        if getattr(component, "label", None) == "风险标注结果"
+    )
+    result_area_id = next(
+        component_id
+        for component_id, component in components.items()
+        if getattr(component, "elem_id", None) == "result_area"
+    )
+
+    upload_events = [
+        dependency
+        for dependency in app.config["dependencies"]
+        if (image_input_id, "change") in dependency.get("targets", [])
+    ]
+
+    assert len(upload_events) == 1
+    assert upload_events[0]["outputs"] == [annotated_output_id, result_area_id]
