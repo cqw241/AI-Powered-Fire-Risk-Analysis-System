@@ -63,3 +63,28 @@ def test_upload_change_clears_previous_analysis_outputs() -> None:
 
     assert len(upload_events) == 1
     assert upload_events[0]["outputs"] == [annotated_output_id, result_area_id]
+
+
+def test_analysis_controls_source_image_scan_animation() -> None:
+    app = build_app()
+
+    source_image = next(
+        component
+        for component in app.blocks.values()
+        if getattr(component, "elem_id", None) == "source_image"
+    )
+    dependencies = app.config["dependencies"]
+    scan_start = [
+        dependency
+        for dependency in dependencies
+        if "classList.add(\"frs-scanning\")" in (dependency.get("js") or "")
+    ]
+    scan_stops = [
+        dependency
+        for dependency in dependencies
+        if "classList.remove(\"frs-scanning\")" in (dependency.get("js") or "")
+    ]
+
+    assert source_image.label == "上传消防场景图片"
+    assert len(scan_start) == 1
+    assert len(scan_stops) == 3
