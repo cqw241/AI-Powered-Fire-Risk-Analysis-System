@@ -17,11 +17,17 @@ def test_loading_state_renders_six_visual_stages() -> None:
     assert "场景风险评估" in loading
     assert "规则与法规关联" in loading
     assert "结果校验" in loading
-    assert "frs-loading-breathe 1.5s" in loading
+    assert "frs-loading-breathe 5s" in loading
     assert "frs-loading-check" in loading
     assert "frs-loading-status-fade" in loading
     assert "frs-loading-status-fade 30s" in loading
     assert ".frs-loading-stage:nth-child(6) { animation-delay: 25s; }" in loading
+    assert ".frs-loading-heading {" in loading
+    assert "color: var(--loading-ink) !important;" in loading
+    assert ".frs-loading-status > span {" in loading
+    assert "color: var(--loading-muted) !important;" in loading
+    assert "color: #e2e8f0 !important;" in loading
+    assert "0%, 8% { transform: scale(1); opacity: .95;" in loading
 
 
 def test_top_banner_renders_the_branding_asset() -> None:
@@ -35,10 +41,7 @@ def test_top_banner_renders_the_branding_asset() -> None:
 def test_upload_change_clears_previous_analysis_outputs() -> None:
     app = build_app()
 
-    components = {
-        component_id: component
-        for component_id, component in app.blocks.items()
-    }
+    components = {component_id: component for component_id, component in app.blocks.items()}
     image_input_id = next(
         component_id
         for component_id, component in components.items()
@@ -77,12 +80,12 @@ def test_analysis_controls_source_image_scan_animation() -> None:
     scan_start = [
         dependency
         for dependency in dependencies
-        if "classList.add(\"frs-scanning\")" in (dependency.get("js") or "")
+        if 'classList.add("frs-scanning")' in (dependency.get("js") or "")
     ]
     scan_stops = [
         dependency
         for dependency in dependencies
-        if "classList.remove(\"frs-scanning\")" in (dependency.get("js") or "")
+        if 'classList.remove("frs-scanning")' in (dependency.get("js") or "")
     ]
 
     assert source_image.label == "上传消防场景图片"

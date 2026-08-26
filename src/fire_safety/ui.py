@@ -436,11 +436,12 @@ def render_loading_html() -> str:
 </div>
 <style>
   .frs-loading {{
+    --loading-heading: #0f172a;
     --loading-ink: #f8fafc;
     --loading-muted: #a7b0bd;
     --loading-panel: #202224;
     --loading-accent: #f5f7fa;
-    color: var(--loading-ink);
+    color: var(--loading-heading);
     min-height: 420px;
     padding: 10px 0 0;
     font-family: {_FONT_STACK};
@@ -450,6 +451,7 @@ def render_loading_html() -> str:
     font-size: 20px;
     font-weight: 650;
     letter-spacing: .02em;
+    color: var(--loading-heading) !important;
   }}
   .frs-loading-panel {{
     max-width: 560px;
@@ -458,6 +460,7 @@ def render_loading_html() -> str:
     border-radius: 28px;
     background: var(--loading-panel);
     box-shadow: 0 18px 42px rgba(15, 23, 42, .16);
+    color: var(--loading-ink) !important;
   }}
   .frs-loading-list {{
     display: grid;
@@ -471,7 +474,7 @@ def render_loading_html() -> str:
     grid-template-columns: 20px minmax(0, 1fr);
     column-gap: 10px;
     align-items: start;
-    opacity: .52;
+    opacity: .82;
     animation: frs-loading-stage-focus 5s linear both;
     animation-delay: calc(var(--frs-stage-index) * 5s);
   }}
@@ -487,7 +490,7 @@ def render_loading_html() -> str:
     place-items: center;
     width: 18px;
     height: 18px;
-    color: var(--loading-ink);
+    color: var(--loading-ink) !important;
     font-size: 17px;
     line-height: 18px;
     font-weight: 500;
@@ -500,11 +503,12 @@ def render_loading_html() -> str:
     place-items: center;
   }}
   .frs-loading-dot {{
-    animation: frs-loading-breathe 1.5s ease-in-out both;
+    color: #e2e8f0 !important;
+    animation: frs-loading-breathe 5s ease-in-out both;
     animation-delay: calc(var(--frs-stage-index) * 5s);
   }}
   .frs-loading-check {{
-    color: var(--loading-accent);
+    color: var(--loading-accent) !important;
     font-size: 16px;
     font-weight: 700;
     opacity: 0;
@@ -520,9 +524,10 @@ def render_loading_html() -> str:
     font-size: 16px;
     font-weight: 600;
     line-height: 1.45;
+    color: var(--loading-ink) !important;
   }}
   .frs-loading-copy span {{
-    color: var(--loading-muted);
+    color: var(--loading-muted) !important;
     font-size: 14px;
     line-height: 1.55;
   }}
@@ -530,7 +535,7 @@ def render_loading_html() -> str:
     position: relative;
     min-height: 22px;
     margin: 24px 0 0 30px;
-    color: var(--loading-muted);
+    color: var(--loading-muted) !important;
     font-size: 13px;
     letter-spacing: .01em;
     overflow: hidden;
@@ -538,6 +543,7 @@ def render_loading_html() -> str:
   .frs-loading-status > span {{
     position: absolute;
     inset: 0;
+    color: var(--loading-muted) !important;
     opacity: 0;
     transform: translateY(3px);
     animation: frs-loading-status-fade 30s ease both;
@@ -547,15 +553,16 @@ def render_loading_html() -> str:
     animation: frs-loading-status-final 1.2s ease 29.7s both !important;
   }}
   @keyframes frs-loading-stage-focus {{
-    0%, 8% {{ opacity: .52; transform: translateX(0); }}
+    0%, 8% {{ opacity: .82; transform: translateX(0); }}
     10%, 17% {{ opacity: 1; transform: translateX(2px); }}
     18%, 100% {{ opacity: 1; transform: translateX(0); }}
   }}
   @keyframes frs-loading-breathe {{
-    0%, 8% {{ transform: scale(1); opacity: .72; text-shadow: 0 0 0 rgba(255,255,255,0); }}
-    31% {{ transform: scale(1.22); opacity: 1; text-shadow: 0 0 12px rgba(255,255,255,.55); }}
-    62% {{ transform: scale(1); opacity: .85; text-shadow: 0 0 0 rgba(255,255,255,0); }}
-    75%, 100% {{ transform: scale(1); opacity: 0; }}
+    0%, 8% {{ transform: scale(1); opacity: .95; text-shadow: 0 0 0 rgba(255,255,255,0); }}
+    31% {{ transform: scale(1.12); opacity: 1; text-shadow: 0 0 12px rgba(255,255,255,.55); }}
+    70% {{ transform: scale(1); opacity: .95; text-shadow: 0 0 0 rgba(255,255,255,0); }}
+    82% {{ transform: scale(1); opacity: .95; }}
+    90%, 100% {{ transform: scale(1); opacity: 0; }}
   }}
   @keyframes frs-loading-check {{
     0% {{ transform: scale(.55); opacity: 0; }}
