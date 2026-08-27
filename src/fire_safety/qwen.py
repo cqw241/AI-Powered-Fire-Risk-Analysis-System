@@ -157,6 +157,12 @@ async def analyze_image(
                     "schema": schema,
                 },
             },
+            # Keep provider extensions in the raw request body. This works with
+            # DashScope today and avoids coupling this client to a provider-
+            # specific SDK when moving to a compatible self-hosted vLLM endpoint.
+            extra_body={
+                "reasoning_effort": app_settings.qwen_reasoning_effort,
+            },
         )
     except OpenAIError as exc:
         raise QwenRequestError(
