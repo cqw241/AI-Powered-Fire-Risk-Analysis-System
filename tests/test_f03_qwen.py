@@ -69,6 +69,7 @@ def configured_settings() -> Settings:
         qwen_base_url="https://qwen.example/v1",
         qwen_api_key="test-key",
         qwen_model="qwen-test-model",
+        qwen_reasoning_effort="low",
     )
 
 
@@ -102,6 +103,7 @@ def test_analyze_image_sends_one_strict_structured_request() -> None:
     assert len(completions.calls) == 1
     request = completions.calls[0]
     assert request["model"] == "qwen-test-model"
+    assert request["extra_body"] == {"reasoning_effort": "low"}
     assert request["response_format"] == {
         "type": "json_schema",
         "json_schema": {
