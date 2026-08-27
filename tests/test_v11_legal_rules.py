@@ -1,25 +1,23 @@
 from __future__ import annotations
 
 from fire_safety.qwen import build_visual_prompt
+from fire_safety.risk_packs import RISK_PACKS_DIR, load_risk_pack_catalog
 from fire_safety.rules import (
     get_rule_catalog,
-    load_rule_catalog,
     resolve_legal_associations,
 )
 
 
-def test_base_loader_remains_v1_compatible() -> None:
-    catalog = load_rule_catalog()
+def test_runtime_catalog_is_loaded_from_the_enabled_risk_pack() -> None:
+    catalog = load_risk_pack_catalog(RISK_PACKS_DIR)
 
-    assert catalog.catalog_id == "cn-mainland-v1-clauses"
-    assert "GB55036-2.0.9" not in {item.clause_id for item in catalog.clauses}
-    assert "SPRINKLER_OBSTRUCTED" not in {item.code for item in catalog.issue_codes}
-
-
-def test_runtime_catalog_merges_v11_extension() -> None:
-    catalog = get_rule_catalog()
-
+    counts = (len(catalog.issue_codes), len(catalog.bindings), len(catalog.clauses))
     assert catalog.catalog_id == "cn-mainland-v1.1"
+    assert counts == (
+        25,
+        58,
+        29,
+    )
     clause_ids = {item.clause_id for item in catalog.clauses}
     issue_codes = {item.code for item in catalog.issue_codes}
 

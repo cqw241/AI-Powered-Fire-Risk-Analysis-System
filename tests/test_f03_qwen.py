@@ -23,6 +23,7 @@ from fire_safety.qwen import (
     analyze_image,
     build_visual_prompt,
 )
+from fire_safety.risk_packs import IssueCodeDefinition, RuleCatalog
 from fire_safety.schemas import VisualInvestigation, load_visual_investigation_schema
 from fire_safety.settings import Settings
 
@@ -91,6 +92,29 @@ def test_prompt_injects_issue_code_catalog() -> None:
     assert "画面中的人员通行路径被物体明显占用" in prompt
     assert "不要输出" in prompt
     assert "法规名称" in prompt
+
+
+def test_prompt_uses_the_injected_rule_catalog() -> None:
+    catalog = RuleCatalog(
+        schema_version="1.0",
+        catalog_id="prompt-test",
+        issue_codes=(
+            IssueCodeDefinition(
+                code="CUSTOM_PROMPT_CODE",
+                display_name="自定义问题",
+                definition="只应来自传入的统一 RuleCatalog",
+                default_priority="medium",
+                default_action="现场处理",
+            ),
+        ),
+        bindings=(),
+        clauses=(),
+    )
+
+    prompt = build_visual_prompt(rule_catalog=catalog)
+
+    assert "`CUSTOM_PROMPT_CODE`：只应来自传入的统一 RuleCatalog" in prompt
+    assert "`PASSAGE_OBSTRUCTED`" not in prompt
 
 
 def test_analyze_image_sends_one_strict_structured_request() -> None:

@@ -13,14 +13,16 @@ from pydantic import ValidationError
 
 from fire_safety import PROJECT_ROOT
 from fire_safety.image import PreparedImage
+from fire_safety.risk_packs import (
+    RuleCatalog,
+    RuleDataError,
+    get_rule_catalog,
+    load_issue_code_definitions,
+)
 from fire_safety.schemas import VisualInvestigation, load_visual_investigation_schema
 from fire_safety.settings import Settings, get_settings
 
 PROMPT_PATH = PROJECT_ROOT / "prompts" / "visual_investigator.md"
-ISSUE_CODES_PATH = PROJECT_ROOT / "data" / "legal" / "issue_codes.json"
-V1_1_ISSUE_CODES_PATH = (
-    PROJECT_ROOT / "data" / "legal" / "extensions" / "v1_1_issue_codes.json"
-)
 ISSUE_CATALOG_PLACEHOLDER = "{{ISSUE_CATALOG}}"
 
 
@@ -66,30 +68,23 @@ class InvalidModelOutputError(QwenError):
 
 def build_visual_prompt(
     prompt_path: str | Path = PROMPT_PATH,
-    issue_codes_path: str | Path = ISSUE_CODES_PATH,
+    issue_codes_path: str | Path | None = None,
+    *,
+    rule_catalog: RuleCatalog | None = None,
 ) -> str:
-    """Load the visual prompt and inject the controlled Issue Code catalog.
-
-    The checked-in default catalog includes the v1.1 extension. Callers that
-    pass an explicit issue-code file keep the previous isolated behavior,
-    which is useful for tests and custom deployments.
-    """
+    """Load the visual prompt and inject the unified controlled Issue Code catalog."""
 
     try:
         template = Path(prompt_path).read_text(encoding="utf-8")
-        issue_codes = _load_issue_codes(issue_codes_path)
-        if Path(issue_codes_path).resolve() == ISSUE_CODES_PATH.resolve():
-            issue_codes.extend(_load_issue_codes(V1_1_ISSUE_CODES_PATH))
-        catalog_lines = []
-        for item in issue_codes:
-            code = item["code"]
-            definition = item["definition"]
-            if not isinstance(code, str) or not code.strip():
-                raise TypeError("issue code must be a non-empty string")
-            if not isinstance(definition, str) or not definition.strip():
-                raise TypeError("issue definition must be a non-empty string")
-            catalog_lines.append(f"- `{code}`：{definition}")
-    except (OSError, json.JSONDecodeError, KeyError, TypeError) as exc:
+        if issue_codes_path is not None and rule_catalog is not None:
+            raise RuleDataError("issue_codes_path 和 rule_catalog 不能同时提供")
+        definitions = (
+            load_issue_code_definitions(issue_codes_path)
+            if issue_codes_path is not None
+            else (rule_catalog or get_rule_catalog()).issue_codes
+        )
+        catalog_lines = [f"- `{item.code}`：{item.definition}" for item in definitions]
+    except (OSError, RuleDataError) as exc:
         raise QwenConfigurationError(
             "视觉分析 Prompt 或 Issue Code 目录无法加载",
             reason="invalid_prompt_resources",
@@ -101,16 +96,6 @@ def build_visual_prompt(
             reason="invalid_prompt_template",
         )
     return template.replace(ISSUE_CATALOG_PLACEHOLDER, "\n".join(catalog_lines))
-
-
-def _load_issue_codes(path: str | Path) -> list[dict[str, Any]]:
-    catalog_data = json.loads(Path(path).read_text(encoding="utf-8"))
-    issue_codes = catalog_data["issue_codes"]
-    if not isinstance(issue_codes, list):
-        raise TypeError("issue_codes must be an array")
-    if not all(isinstance(item, dict) for item in issue_codes):
-        raise TypeError("each issue code must be an object")
-    return list(issue_codes)
 
 
 async def analyze_image(
@@ -221,9 +206,7 @@ def _missing_response_content(cause: Exception | None = None) -> str:
 
 
 __all__ = [
-    "ISSUE_CODES_PATH",
     "PROMPT_PATH",
-    "V1_1_ISSUE_CODES_PATH",
     "InvalidModelOutputError",
     "QwenConfigurationError",
     "QwenError",

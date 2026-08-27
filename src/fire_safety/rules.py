@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
-import json
 from collections import Counter
-from functools import lru_cache
-from pathlib import Path
-from typing import Annotated, Sequence
+from typing import Sequence
 
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, StringConstraints
-
-from fire_safety import PROJECT_ROOT
+from fire_safety.risk_packs import (
+    Clause,
+    IssueCodeDefinition,
+    RuleBinding,
+    RuleCatalog,
+    RuleDataError,
+    get_rule_catalog,
+    load_rule_catalog,
+)
 from fire_safety.schemas import (
     LegalAssociation,
     LegalRelation,
@@ -18,162 +21,7 @@ from fire_safety.schemas import (
     RuleStatus,
 )
 
-LEGAL_DATA_DIR = PROJECT_ROOT / "data" / "legal"
-LEGAL_EXTENSIONS_DIR = LEGAL_DATA_DIR / "extensions"
-ISSUE_CODES_PATH = LEGAL_DATA_DIR / "issue_codes.json"
-RULE_BINDINGS_PATH = LEGAL_DATA_DIR / "rule_bindings.json"
-CLAUSES_PATH = LEGAL_DATA_DIR / "clauses.json"
-V1_1_ISSUE_CODES_PATH = LEGAL_EXTENSIONS_DIR / "v1_1_issue_codes.json"
-V1_1_RULE_BINDINGS_PATH = LEGAL_EXTENSIONS_DIR / "v1_1_rule_bindings.json"
-V1_1_CLAUSES_PATH = LEGAL_EXTENSIONS_DIR / "v1_1_clauses.json"
-DEFAULT_CATALOG_ID = "cn-mainland-v1.1"
-
-NonEmptyStr = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
-
 _PRIORITY_RANK = {RiskPriority.HIGH: 0, RiskPriority.MEDIUM: 1, RiskPriority.LOW: 2}
-
-
-class RuleDataError(ValueError):
-    """Raised when local rule data cannot be loaded or cross-referenced."""
-
-
-class IssueCodeDefinition(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    code: NonEmptyStr
-    display_name: NonEmptyStr
-    definition: NonEmptyStr
-    default_priority: RiskPriority
-    default_action: NonEmptyStr
-
-
-class RuleBinding(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    binding_id: NonEmptyStr
-    issue_code: NonEmptyStr
-    clause_id: NonEmptyStr
-    priority: Annotated[StrictInt, Field(gt=0)]
-    relation: LegalRelation
-    missing_conditions: list[NonEmptyStr]
-
-
-class Clause(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    clause_id: NonEmptyStr
-    source_name: NonEmptyStr
-    source_code: NonEmptyStr
-    clause_number: NonEmptyStr
-    clause_text: NonEmptyStr
-    effective: bool
-    verified_at: NonEmptyStr
-    verification_source: NonEmptyStr
-    engineering_note: NonEmptyStr
-
-
-class RuleCatalog(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    schema_version: NonEmptyStr
-    catalog_id: NonEmptyStr
-    issue_codes: tuple[IssueCodeDefinition, ...]
-    bindings: tuple[RuleBinding, ...]
-    clauses: tuple[Clause, ...]
-    max_visible_clauses_per_finding: Annotated[StrictInt, Field(gt=0)] = 3
-
-    @classmethod
-    def from_raw(
-        cls,
-        issue_codes: object,
-        bindings: object,
-        clauses: object,
-        *,
-        schema_version: str = "1.0",
-        catalog_id: str = "cn-mainland-v1-clauses",
-        max_visible_clauses_per_finding: int = 3,
-    ) -> "RuleCatalog":
-        issue_items = _array_payload(issue_codes, "issue_codes")
-        binding_items = _array_payload(bindings, "bindings")
-        clause_items = _array_payload(clauses, "clauses")
-        catalog = cls.model_validate(
-            {
-                "schema_version": schema_version,
-                "catalog_id": catalog_id,
-                "issue_codes": issue_items,
-                "bindings": binding_items,
-                "clauses": clause_items,
-                "max_visible_clauses_per_finding": max_visible_clauses_per_finding,
-            }
-        )
-        _validate_unique(catalog.issue_codes, "code")
-        _validate_unique(catalog.bindings, "binding_id")
-        _validate_unique(catalog.clauses, "clause_id")
-        for clause in catalog.clauses:
-            if clause.clause_id.split("-", 1)[0] != clause.source_code:
-                raise ValueError(f"clause id prefix does not match source_code: {clause.clause_id}")
-        issue_set = {item.code for item in catalog.issue_codes}
-        clause_set = {item.clause_id for item in catalog.clauses}
-        for binding in catalog.bindings:
-            if binding.issue_code not in issue_set:
-                raise ValueError(f"binding references unknown issue code: {binding.issue_code}")
-            if binding.clause_id not in clause_set:
-                raise ValueError(f"binding references unknown clause: {binding.clause_id}")
-        return catalog
-
-
-def load_rule_catalog(
-    issue_codes_path: str | Path = ISSUE_CODES_PATH,
-    bindings_path: str | Path = RULE_BINDINGS_PATH,
-    clauses_path: str | Path = CLAUSES_PATH,
-    *,
-    include_extensions: bool = False,
-) -> RuleCatalog:
-    """Load and validate a legal rule package.
-
-    ``load_rule_catalog()`` keeps the v1 base package behavior for tests and
-    custom callers. Runtime code uses ``get_rule_catalog()``, which explicitly
-    enables the checked-in v1.1 extension pack.
-    """
-
-    issue_payload = _read_json(issue_codes_path)
-    binding_payload = _read_json(bindings_path)
-    clause_payload = _read_json(clauses_path)
-
-    try:
-        if include_extensions:
-            issue_payload = _merge_array_payloads(
-                issue_payload, _read_json(V1_1_ISSUE_CODES_PATH), "issue_codes"
-            )
-            binding_payload = _merge_array_payloads(
-                binding_payload, _read_json(V1_1_RULE_BINDINGS_PATH), "bindings"
-            )
-            clause_payload = _merge_array_payloads(
-                clause_payload, _read_json(V1_1_CLAUSES_PATH), "clauses"
-            )
-        return RuleCatalog.from_raw(
-            issue_payload,
-            binding_payload,
-            clause_payload,
-            schema_version=_string_field(clause_payload, "schema_version", "1.0"),
-            catalog_id=(
-                DEFAULT_CATALOG_ID
-                if include_extensions
-                else _string_field(clause_payload, "catalog_id", "cn-mainland-v1-clauses")
-            ),
-            max_visible_clauses_per_finding=_int_field(
-                binding_payload, "max_visible_clauses_per_finding", 3
-            ),
-        )
-    except (TypeError, ValueError, KeyError) as exc:
-        raise RuleDataError(f"法规规则包结构或引用无效：{exc}") from exc
-
-
-@lru_cache
-def get_rule_catalog() -> RuleCatalog:
-    """Return the process-wide merged v1.1 runtime catalog."""
-
-    return load_rule_catalog(include_extensions=True)
 
 
 def resolve_issue_codes(
@@ -298,51 +146,7 @@ def recommended_action(issue_codes: Sequence[str], catalog: RuleCatalog) -> str:
     return selected.default_action
 
 
-def _read_json(path: str | Path) -> object:
-    try:
-        with Path(path).open(encoding="utf-8") as handle:
-            return json.load(handle)
-    except (OSError, json.JSONDecodeError) as exc:
-        raise RuleDataError(f"无法读取法规规则文件: {path}") from exc
-
-
-def _array_payload(payload: object, field: str) -> object:
-    if not isinstance(payload, dict) or not isinstance(payload.get(field), list):
-        raise ValueError(f"{field} must be an array")
-    return payload[field]
-
-
-def _merge_array_payloads(base: object, extension: object, field: str) -> dict[str, object]:
-    if not isinstance(base, dict):
-        raise ValueError(f"base payload for {field} must be an object")
-    merged = dict(base)
-    merged[field] = [*_array_payload(base, field), *_array_payload(extension, field)]
-    return merged
-
-
-def _string_field(payload: object, field: str, default: str) -> str:
-    return payload.get(field, default) if isinstance(payload, dict) else default
-
-
-def _int_field(payload: object, field: str, default: int) -> int:
-    return payload.get(field, default) if isinstance(payload, dict) else default
-
-
-def _validate_unique(items: Sequence[BaseModel], field: str) -> None:
-    values = [getattr(item, field) for item in items]
-    if len(values) != len(set(values)):
-        raise ValueError(f"duplicate {field}")
-
-
 __all__ = [
-    "CLAUSES_PATH",
-    "DEFAULT_CATALOG_ID",
-    "ISSUE_CODES_PATH",
-    "LEGAL_EXTENSIONS_DIR",
-    "RULE_BINDINGS_PATH",
-    "V1_1_CLAUSES_PATH",
-    "V1_1_ISSUE_CODES_PATH",
-    "V1_1_RULE_BINDINGS_PATH",
     "Clause",
     "IssueCodeDefinition",
     "RuleBinding",

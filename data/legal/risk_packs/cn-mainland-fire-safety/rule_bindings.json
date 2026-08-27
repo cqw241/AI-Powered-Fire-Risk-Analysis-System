@@ -548,6 +548,40 @@
         "需确认该场所是否属于相关单位消防安全管理范围。",
         "需确认相关物品是否属于易燃易爆危险物品。"
       ]
+    },
+    {
+      "binding_id": "RB-FIRE-FACILITY-DISABLED-GB55036-2.0.9",
+      "issue_code": "FIRE_FACILITY_DAMAGED_OR_DISABLED",
+      "clause_id": "GB55036-2.0.9",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需现场确认该消防设施是否实际处于异常运行或工作状态，以及关停、拆改或移动是否属于擅自行为。"
+      ]
+    },
+    {
+      "binding_id": "RB-FIRE-FACILITY-MARKING-GB55036-2.0.10",
+      "issue_code": "FIRE_FACILITY_MARKING_OBSCURED_OR_DEFECTIVE",
+      "clause_id": "GB55036-2.0.10",
+      "priority": 1,
+      "relation": "direct",
+      "missing_conditions": []
+    },
+    {
+      "binding_id": "RB-SPRINKLER-OBSTRUCTED-GB55036-4.0.5-2",
+      "issue_code": "SPRINKLER_OBSTRUCTED",
+      "clause_id": "GB55036-4.0.5-2",
+      "priority": 1,
+      "relation": "direct",
+      "missing_conditions": []
+    },
+    {
+      "binding_id": "RB-EXTINGUISHER-OBSTRUCTED-GB55036-10.0.4",
+      "issue_code": "EXTINGUISHER_OBSTRUCTED",
+      "clause_id": "GB55036-10.0.4",
+      "priority": 1,
+      "relation": "direct",
+      "missing_conditions": []
     }
   ]
 }

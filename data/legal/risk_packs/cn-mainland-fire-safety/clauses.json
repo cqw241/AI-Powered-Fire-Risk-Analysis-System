@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "catalog_id": "cn-mainland-v1-clauses",
+  "catalog_id": "cn-mainland-v1.1",
   "clauses": [
     {
       "clause_id": "XFF-16-1-2",
@@ -276,6 +276,50 @@
       "verified_at": "2026-08-13",
       "verification_source": "business_review",
       "engineering_note": "可观察用电产品周边易燃、易爆或腐蚀性物品的堆放和空间关系；物品属性无法由清晰标签或可靠上下文确认时，应保持未知。"
+    },
+    {
+      "clause_id": "GB55036-2.0.9",
+      "source_name": "消防设施通用规范 GB 55036-2022",
+      "source_code": "GB55036",
+      "clause_number": "2.0.9",
+      "clause_text": "消防设施投入使用后，应定期进行巡查、检查和维护，并应保证其处于正常运行或工作状态，不应擅自关停、拆改或移动。超过有效期的灭火介质、消防设施或经检验不符合继续使用要求的管道、组件和压力容器不应使用。",
+      "effective": true,
+      "verified_at": "2026-08-26",
+      "verification_source": "user_provided_standard_scan_and_official_publication",
+      "engineering_note": "图片可观察已明确识别的消防设施是否存在明显损坏、拆改、移动或停用标识等状态；是否定期巡查维护、是否擅自关停、是否超过有效期及实际功能状态通常需要管理记录或现场测试确认。"
+    },
+    {
+      "clause_id": "GB55036-2.0.10",
+      "source_name": "消防设施通用规范 GB 55036-2022",
+      "source_code": "GB55036",
+      "clause_number": "2.0.10",
+      "clause_text": "消防设施上或附近应设置区别于环境的明显标识，说明文字应准确、清楚且易于识别，颜色、符号或标志应规范。手动操作按钮等装置处应采取防止误操作或被损坏的防护措施。",
+      "effective": true,
+      "verified_at": "2026-08-26",
+      "verification_source": "user_provided_standard_scan_and_official_publication",
+      "engineering_note": "可观察已明确识别的消防设施标识是否被遮挡、覆盖、明显破损或难以识别；单张图片未拍到标识不能等同于现场缺失标识。手动操作装置的防误操作、防损坏措施是否完整需结合装置类型和完整视角判断。"
+    },
+    {
+      "clause_id": "GB55036-4.0.5-2",
+      "source_name": "消防设施通用规范 GB 55036-2022",
+      "source_code": "GB55036",
+      "clause_number": "4.0.5 第二项",
+      "clause_text": "喷头周围不应有遮挡或影响洒水效果的障碍物；",
+      "effective": true,
+      "verified_at": "2026-08-26",
+      "verification_source": "user_provided_standard_scan_and_official_publication",
+      "engineering_note": "适合检测已明确识别的洒水喷头周围存在货物、装修构件、管线或其他明显遮挡并可能影响洒水效果的状态。喷头间距、工作压力、建筑高度及系统类型等 4.0.5 其他项条件不由该视觉规则判断。"
+    },
+    {
+      "clause_id": "GB55036-10.0.4",
+      "source_name": "消防设施通用规范 GB 55036-2022",
+      "source_code": "GB55036",
+      "clause_number": "10.0.4",
+      "clause_text": "灭火器应设置在位置明显和便于取用的地点，且不应影响人员安全疏散。当确需设置在有视线障碍的设置点时，应设置指示灭火器位置的醒目标志。",
+      "effective": true,
+      "verified_at": "2026-08-26",
+      "verification_source": "user_provided_standard_scan_and_official_publication",
+      "engineering_note": "对已明确识别的灭火器，可观察其是否被货物遮挡、压住或明显妨碍取用。是否影响人员安全疏散以及有视线障碍时是否依法需要额外位置指示，应结合完整现场条件判断。"
     }
   ]
 }

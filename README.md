@@ -77,8 +77,8 @@ Gradio 上传图片
 → 图片解码和 EXIF 方向修正
 → Qwen3.8-27B Structured Output
 → Schema / bbox / Issue Code 校验
-→ rule_bindings.json 查询
-→ clauses.json 回填法规
+→ Risk Pack Loader 统一 RuleCatalog
+→ Rule Binding 查询与 Clause 回填
 → 组装 AnalysisResult
 → Gradio 展示 bbox、Finding、法规和整改建议
 ```
@@ -100,11 +100,31 @@ bbox 绘制必须使用这组统一坐标基准。无法使用的图片抛出 `I
 | `prompts/visual_investigator.md` | Qwen 图片分析 Prompt |
 | `schemas/visual_investigation.schema.json` | Qwen Structured Output 契约 |
 | `schemas/analysis_result.schema.json` | Pipeline 最终结果契约 |
-| `data/legal/clauses.json` | 法规名称、条款号和条款原文 |
-| `data/legal/issue_codes.json` | 受控 Issue Code、默认优先级和整改建议 |
-| `data/legal/rule_bindings.json` | Issue Code 到法规条款的确定性映射 |
+| `src/fire_safety/risk_packs.py` | Risk Pack 发现、校验、合并和统一 RuleCatalog 构建 |
+| `data/legal/risk_packs/*/manifest.json` | 规则包标识、版本和启用状态 |
+| `data/legal/risk_packs/*/issue_codes.json` | 受控 Issue Code、默认优先级和整改建议 |
+| `data/legal/risk_packs/*/rule_bindings.json` | Issue Code 到法规条款的确定性映射 |
+| `data/legal/risk_packs/*/clauses.json` | 法规名称、条款号和条款原文 |
 | `docs/条款表.md` | 法规条款的人类可读版本 |
 | `examples/analysis_result.example.json` | 最终结果示例 |
+
+## Risk Pack
+
+生产运行时扫描 `data/legal/risk_packs` 的直接子目录。每个规则包固定包含以下四个 JSON 文件，
+不包含 Python 代码：
+
+```text
+<pack-directory>/
+├── manifest.json
+├── issue_codes.json
+├── rule_bindings.json
+└── clauses.json
+```
+
+`manifest.json` 必须声明 `schema_version`、`pack_id`、`version`、`catalog_id` 和 `enabled`。
+Loader 校验所有 manifest，只加载 `enabled: true` 的规则数据；多个启用包中的 Issue Code、
+Binding ID 或 Clause ID 重复时拒绝加载，不进行覆盖。新增领域规则原则上只需增加这样的目录，
+无需修改核心 Python 代码。
 
 ## 实现规则
 
@@ -157,10 +177,10 @@ bbox 使用 0-1000 归一化坐标：
 | F05 | 已完成 | Pipeline、AnalysisResult 和最终 Gradio 展示 |
 | F06 | 进行中 | 自动化测试已完成；待补充五类真实图片端到端验收记录 |
 
-当前规则包包含 23 个 Issue Code、25 条法规条款和 54 条规则绑定。测试与静态检查结果：
+当前启用规则包包含 25 个 Issue Code、29 条法规条款和 58 条规则绑定。测试与静态检查结果：
 
 ```text
-92 passed
+114 passed
 ruff check . → All checks passed
 ```
 
