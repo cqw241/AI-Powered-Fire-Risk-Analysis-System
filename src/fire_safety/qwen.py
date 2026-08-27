@@ -136,34 +136,37 @@ async def analyze_image(
     schema = load_visual_investigation_schema()
     data_url = _image_data_url(image)
 
+    request_kwargs: dict[str, Any] = {
+        "model": app_settings.qwen_model,
+        "messages": [
+            {"role": "system", "content": prompt},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "请分析这张消防场景图片。"},
+                    {"type": "image_url", "image_url": {"url": data_url}},
+                ],
+            },
+        ],
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "visual_investigation",
+                "strict": True,
+                "schema": schema,
+            },
+        },
+    }
+    if app_settings.qwen_reasoning_effort is not None:
+        # Keep provider extensions in the raw request body. This works with
+        # DashScope today and avoids coupling this client to a provider-
+        # specific SDK when moving to a compatible self-hosted vLLM endpoint.
+        request_kwargs["extra_body"] = {
+            "reasoning_effort": app_settings.qwen_reasoning_effort,
+        }
+
     try:
-        response = await qwen_client.chat.completions.create(
-            model=app_settings.qwen_model,
-            messages=[
-                {"role": "system", "content": prompt},
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": "请分析这张消防场景图片。"},
-                        {"type": "image_url", "image_url": {"url": data_url}},
-                    ],
-                },
-            ],
-            response_format={
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "visual_investigation",
-                    "strict": True,
-                    "schema": schema,
-                },
-            },
-            # Keep provider extensions in the raw request body. This works with
-            # DashScope today and avoids coupling this client to a provider-
-            # specific SDK when moving to a compatible self-hosted vLLM endpoint.
-            extra_body={
-                "reasoning_effort": app_settings.qwen_reasoning_effort,
-            },
-        )
+        response = await qwen_client.chat.completions.create(**request_kwargs)
     except OpenAIError as exc:
         raise QwenRequestError(
             "Qwen 视觉分析请求失败",
