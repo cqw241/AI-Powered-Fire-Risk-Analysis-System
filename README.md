@@ -50,9 +50,11 @@ dev = ["pytest>=8,<9", "ruff>=0.8,<1", "jsonschema>=4,<5"]
 QWEN_BASE_URL=
 QWEN_API_KEY=
 QWEN_MODEL=Qwen3.8-27B
+# 可选：low / medium / xhigh；未配置时不向模型服务发送 reasoning_effort
+# QWEN_REASONING_EFFORT=low
 ```
 
-可复制 `.env.example` 为 `.env` 后填写配置。真实密钥不会提交到仓库。
+可复制 `.env.example` 为 `.env` 后填写配置。真实密钥不会提交到仓库。`QWEN_REASONING_EFFORT` 为可选项；默认不配置时保持模型服务原有默认推理行为。
 
 安装和运行：
 

@@ -12,6 +12,7 @@ import pytest
 from conftest import VALID_VISUAL_OUTPUT
 from openai import APIConnectionError, AsyncOpenAI
 from PIL import Image
+from pydantic import ValidationError
 
 from fire_safety.image import PreparedImage, prepare_image
 from fire_safety.qwen import (
@@ -69,6 +70,7 @@ def configured_settings() -> Settings:
         qwen_base_url="https://qwen.example/v1",
         qwen_api_key="test-key",
         qwen_model="qwen-test-model",
+        qwen_reasoning_effort="low",
     )
 
 
@@ -102,6 +104,7 @@ def test_analyze_image_sends_one_strict_structured_request() -> None:
     assert len(completions.calls) == 1
     request = completions.calls[0]
     assert request["model"] == "qwen-test-model"
+    assert request["extra_body"] == {"reasoning_effort": "low"}
     assert request["response_format"] == {
         "type": "json_schema",
         "json_schema": {
@@ -115,6 +118,25 @@ def test_analyze_image_sends_one_strict_structured_request() -> None:
     prefix, encoded = image_url.split(",", maxsplit=1)
     assert prefix == "data:image/png;base64"
     assert base64.b64decode(encoded) == image.qwen_bytes
+
+
+def test_reasoning_effort_is_omitted_when_unset() -> None:
+    completions = FakeCompletions()
+    settings = Settings(
+        qwen_base_url="https://qwen.example/v1",
+        qwen_api_key="test-key",
+        qwen_model="qwen-test-model",
+        _env_file=None,
+    )
+
+    run_analysis(completions, settings=settings)
+
+    assert "extra_body" not in completions.calls[0]
+
+
+def test_invalid_reasoning_effort_is_rejected() -> None:
+    with pytest.raises(ValidationError):
+        Settings(qwen_reasoning_effort="extreme", _env_file=None)
 
 
 def test_missing_configuration_fails_before_request() -> None:
