@@ -4,12 +4,28 @@ from fire_safety.qwen import build_visual_prompt
 from fire_safety.risk_packs import RISK_PACKS_DIR, load_risk_pack_catalog
 from fire_safety.rules import (
     get_rule_catalog,
+    load_rule_catalog,
     resolve_legal_associations,
 )
 
 
+def test_no_argument_legacy_loader_preserves_the_v1_base_catalog() -> None:
+    catalog = load_rule_catalog()
+
+    assert catalog.catalog_id == "cn-mainland-v1-clauses"
+    assert len(catalog.issue_codes) == 23
+    assert len(catalog.bindings) == 54
+    assert len(catalog.clauses) == 25
+    assert "SPRINKLER_OBSTRUCTED" not in {item.code for item in catalog.issue_codes}
+    assert "GB55036-2.0.9" not in {item.clause_id for item in catalog.clauses}
+
+
+def test_legacy_include_extensions_call_maps_to_the_runtime_catalog() -> None:
+    assert load_rule_catalog(include_extensions=True) == get_rule_catalog()
+
+
 def test_runtime_catalog_is_loaded_from_the_enabled_risk_pack() -> None:
-    catalog = load_risk_pack_catalog(RISK_PACKS_DIR)
+    catalog = get_rule_catalog()
 
     counts = (len(catalog.issue_codes), len(catalog.bindings), len(catalog.clauses))
     assert catalog.catalog_id == "cn-mainland-v1.1"
@@ -31,6 +47,7 @@ def test_runtime_catalog_is_loaded_from_the_enabled_risk_pack() -> None:
         "SPRINKLER_OBSTRUCTED",
         "FIRE_FACILITY_MARKING_OBSCURED_OR_DEFECTIVE",
     } <= issue_codes
+    assert catalog == load_risk_pack_catalog(RISK_PACKS_DIR)
 
 
 def test_verified_gb55036_clause_text_is_exact_checked_in_text() -> None:

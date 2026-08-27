@@ -126,6 +126,11 @@ Loader 校验所有 manifest，只加载 `enabled: true` 的规则数据；多�
 Binding ID 或 Clause ID 重复时拒绝加载，不进行覆盖。新增领域规则原则上只需增加这样的目录，
 无需修改核心 Python 代码。
 
+生产运行时通过 `get_rule_catalog()` 加载上述 Risk Packs。为保持已有调用兼容，
+`load_rule_catalog()` 无参数调用仍加载 `data/legal` 下的 v1 基础三文件；显式传入三条文件路径时
+仍加载对应 legacy Catalog。旧调用 `load_rule_catalog(include_extensions=True)` 映射到 manifest 运行时
+Catalog。两类入口最终复用同一个 RuleCatalog 构建和跨引用校验函数。
+
 ## 实现规则
 
 ### Qwen 输出
@@ -180,7 +185,7 @@ bbox 使用 0-1000 归一化坐标：
 当前启用规则包包含 25 个 Issue Code、29 条法规条款和 58 条规则绑定。测试与静态检查结果：
 
 ```text
-114 passed
+117 passed
 ruff check . → All checks passed
 ```
 

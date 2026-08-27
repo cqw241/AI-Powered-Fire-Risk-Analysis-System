@@ -1,0 +1,553 @@
+{
+  "max_visible_clauses_per_finding": 3,
+  "bindings": [
+    {
+      "binding_id": "RB-PASSAGE-XFF28",
+      "issue_code": "PASSAGE_OBSTRUCTED",
+      "clause_id": "XFF-28",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该人员通行区域是否属于法定疏散通道、疏散走道或疏散出口。"
+      ]
+    },
+    {
+      "binding_id": "RB-PASSAGE-GB55037-7.1.5",
+      "issue_code": "PASSAGE_OBSTRUCTED",
+      "clause_id": "GB55037-7.1.5",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该人员通行区域是否属于法定疏散通道、疏散走道或疏散出口。"
+      ]
+    },
+    {
+      "binding_id": "RB-PASSAGE-GLGD21",
+      "issue_code": "PASSAGE_OBSTRUCTED",
+      "clause_id": "GLGD-21",
+      "priority": 2,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于相关单位消防安全管理范围。",
+        "需确认该人员通行区域是否属于法定疏散通道、疏散走道或疏散出口。"
+      ]
+    },
+    {
+      "binding_id": "RB-PASSAGE-GLGD31-1-3",
+      "issue_code": "PASSAGE_OBSTRUCTED",
+      "clause_id": "GLGD-31-1-3",
+      "priority": 2,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于相关单位消防安全管理范围。",
+        "需确认该人员通行区域是否属于法定疏散通道、疏散走道或疏散出口。"
+      ]
+    },
+    {
+      "binding_id": "RB-PASSAGE-XFF16-1-4",
+      "issue_code": "PASSAGE_OBSTRUCTED",
+      "clause_id": "XFF-16-1-4",
+      "priority": 3,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于相关单位消防安全管理范围。",
+        "需确认该人员通行区域是否属于法定疏散通道、疏散走道或疏散出口。"
+      ]
+    },
+    {
+      "binding_id": "RB-EXIT-BLOCK-XFF28",
+      "issue_code": "EXIT_AREA_BLOCKED",
+      "clause_id": "XFF-28",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该门或出口是否属于法定安全出口/疏散出口。"
+      ]
+    },
+    {
+      "binding_id": "RB-EXIT-BLOCK-GB55037-7.1.5",
+      "issue_code": "EXIT_AREA_BLOCKED",
+      "clause_id": "GB55037-7.1.5",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该门或出口是否属于法定安全出口/疏散出口。"
+      ]
+    },
+    {
+      "binding_id": "RB-EXIT-BLOCK-GLGD21",
+      "issue_code": "EXIT_AREA_BLOCKED",
+      "clause_id": "GLGD-21",
+      "priority": 2,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于相关单位消防安全管理范围。",
+        "需确认该门或出口是否属于法定安全出口/疏散出口。"
+      ]
+    },
+    {
+      "binding_id": "RB-EXIT-BLOCK-GLGD31-1-3",
+      "issue_code": "EXIT_AREA_BLOCKED",
+      "clause_id": "GLGD-31-1-3",
+      "priority": 2,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于相关单位消防安全管理范围。",
+        "需确认该门或出口是否属于法定安全出口/疏散出口。"
+      ]
+    },
+    {
+      "binding_id": "RB-EXIT-BLOCK-XFF16-1-4",
+      "issue_code": "EXIT_AREA_BLOCKED",
+      "clause_id": "XFF-16-1-4",
+      "priority": 3,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于相关单位消防安全管理范围。",
+        "需确认该门或出口是否属于法定安全出口/疏散出口。"
+      ]
+    },
+    {
+      "binding_id": "RB-EXIT-LOCK-XFF28",
+      "issue_code": "EXIT_DOOR_LOCKED_VISIBLE",
+      "clause_id": "XFF-28",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该门或出口是否属于法定安全出口/疏散出口。"
+      ]
+    },
+    {
+      "binding_id": "RB-EXIT-LOCK-GB55037-7.1.7",
+      "issue_code": "EXIT_DOOR_LOCKED_VISIBLE",
+      "clause_id": "GB55037-7.1.7",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该门或出口是否属于法定安全出口/疏散出口。"
+      ]
+    },
+    {
+      "binding_id": "RB-EXIT-LOCK-GLGD21",
+      "issue_code": "EXIT_DOOR_LOCKED_VISIBLE",
+      "clause_id": "GLGD-21",
+      "priority": 2,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于相关单位消防安全管理范围。",
+        "需确认该门或出口是否属于法定安全出口/疏散出口。"
+      ]
+    },
+    {
+      "binding_id": "RB-EXIT-LOCK-GLGD31-1-3",
+      "issue_code": "EXIT_DOOR_LOCKED_VISIBLE",
+      "clause_id": "GLGD-31-1-3",
+      "priority": 2,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于相关单位消防安全管理范围。",
+        "需确认该门或出口是否属于法定安全出口/疏散出口。"
+      ]
+    },
+    {
+      "binding_id": "RB-FIRE-LANE-XFF28",
+      "issue_code": "FIRE_LANE_OBSTRUCTION_CONCERN",
+      "clause_id": "XFF-28",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认被占用区域是否属于法定消防车通道。"
+      ]
+    },
+    {
+      "binding_id": "RB-FIRE-LANE-XFF16-1-4",
+      "issue_code": "FIRE_LANE_OBSTRUCTION_CONCERN",
+      "clause_id": "XFF-16-1-4",
+      "priority": 2,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于相关单位消防安全管理范围。",
+        "需确认被占用区域是否属于法定消防车通道。"
+      ]
+    },
+    {
+      "binding_id": "RB-ESCAPE-OBSTACLE-XFF28",
+      "issue_code": "ESCAPE_RESCUE_OBSTACLE_PRESENT",
+      "clause_id": "XFF-28",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于人员密集场所。"
+      ]
+    },
+    {
+      "binding_id": "RB-SIGN-OBSCURED-GLGD21",
+      "issue_code": "EVACUATION_SIGN_OBSCURED",
+      "clause_id": "GLGD-21",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于相关单位消防安全管理范围。"
+      ]
+    },
+    {
+      "binding_id": "RB-SIGN-OBSCURED-XFF16-1-2",
+      "issue_code": "EVACUATION_SIGN_OBSCURED",
+      "clause_id": "XFF-16-1-2",
+      "priority": 2,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于相关单位消防安全管理范围。"
+      ]
+    },
+    {
+      "binding_id": "RB-SIGN-OBSCURED-GB55037-7.1.5",
+      "issue_code": "EVACUATION_SIGN_OBSCURED",
+      "clause_id": "GB55037-7.1.5",
+      "priority": 2,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该人员通行区域是否属于法定疏散通道、疏散走道或疏散出口。"
+      ]
+    },
+    {
+      "binding_id": "RB-SIGN-OBSCURED-GB55037-6.5.1",
+      "issue_code": "EVACUATION_SIGN_OBSCURED",
+      "clause_id": "GB55037-6.5.1",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认遮挡或改动是否由建筑内部装修造成。",
+        "需确认相关行为是否属于擅自减少、改动、拆除或遮挡。"
+      ]
+    },
+    {
+      "binding_id": "RB-SIGN-DEFECT-GLGD21",
+      "issue_code": "EVACUATION_SIGN_VISIBLE_DEFECT",
+      "clause_id": "GLGD-21",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于相关单位消防安全管理范围。"
+      ]
+    },
+    {
+      "binding_id": "RB-SIGN-DEFECT-XFF16-1-2",
+      "issue_code": "EVACUATION_SIGN_VISIBLE_DEFECT",
+      "clause_id": "XFF-16-1-2",
+      "priority": 2,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于相关单位消防安全管理范围。"
+      ]
+    },
+    {
+      "binding_id": "RB-SIGN-DEFECT-GB55037-10.1.8",
+      "issue_code": "EVACUATION_SIGN_VISIBLE_DEFECT",
+      "clause_id": "GB55037-10.1.8",
+      "priority": 2,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认建筑是否属于 GB 55037-2022 10.1.8 所列应设置灯光疏散指示标志的范围。"
+      ]
+    },
+    {
+      "binding_id": "RB-EMERGENCY-LIGHT-GLGD21",
+      "issue_code": "EMERGENCY_LIGHT_VISIBLE_DEFECT",
+      "clause_id": "GLGD-21",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于相关单位消防安全管理范围。"
+      ]
+    },
+    {
+      "binding_id": "RB-FIRE-DOOR-GB55037-6.4.1",
+      "issue_code": "FIRE_DOOR_HELD_OPEN",
+      "clause_id": "GB55037-6.4.1",
+      "priority": 1,
+      "relation": "direct",
+      "missing_conditions": []
+    },
+    {
+      "binding_id": "RB-FIRE-DOOR-GLGD31-1-5",
+      "issue_code": "FIRE_DOOR_HELD_OPEN",
+      "clause_id": "GLGD-31-1-5",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于相关单位消防安全管理范围。"
+      ]
+    },
+    {
+      "binding_id": "RB-FIRE-DOOR-GLGD21",
+      "issue_code": "FIRE_DOOR_HELD_OPEN",
+      "clause_id": "GLGD-21",
+      "priority": 2,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于相关单位消防安全管理范围。"
+      ]
+    },
+    {
+      "binding_id": "RB-FIRE-SHUTTER-GLGD31-1-5",
+      "issue_code": "FIRE_SHUTTER_OBSTRUCTED",
+      "clause_id": "GLGD-31-1-5",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于相关单位消防安全管理范围。"
+      ]
+    },
+    {
+      "binding_id": "RB-FIRE-SHUTTER-GLGD21",
+      "issue_code": "FIRE_SHUTTER_OBSTRUCTED",
+      "clause_id": "GLGD-21",
+      "priority": 2,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于相关单位消防安全管理范围。"
+      ]
+    },
+    {
+      "binding_id": "RB-HYDRANT-XFF28",
+      "issue_code": "HYDRANT_OBSTRUCTED",
+      "clause_id": "XFF-28",
+      "priority": 1,
+      "relation": "direct",
+      "missing_conditions": []
+    },
+    {
+      "binding_id": "RB-HYDRANT-GLGD31-1-4",
+      "issue_code": "HYDRANT_OBSTRUCTED",
+      "clause_id": "GLGD-31-1-4",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于相关单位消防安全管理范围。"
+      ]
+    },
+    {
+      "binding_id": "RB-EXT-OBSCURED-GLGD31-1-4",
+      "issue_code": "EXTINGUISHER_OBSTRUCTED",
+      "clause_id": "GLGD-31-1-4",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于相关单位消防安全管理范围。"
+      ]
+    },
+    {
+      "binding_id": "RB-EXT-DEFECT-GLGD29",
+      "issue_code": "EXTINGUISHER_VISIBLE_DEFECT",
+      "clause_id": "GLGD-29",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于相关单位消防安全管理范围。"
+      ]
+    },
+    {
+      "binding_id": "RB-EXT-DEFECT-XFF16-1-2",
+      "issue_code": "EXTINGUISHER_VISIBLE_DEFECT",
+      "clause_id": "XFF-16-1-2",
+      "priority": 2,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于相关单位消防安全管理范围。"
+      ]
+    },
+    {
+      "binding_id": "RB-EXT-EMPTY-GB55037-8.1.1",
+      "issue_code": "EXTINGUISHER_LOCATION_EMPTY",
+      "clause_id": "GB55037-8.1.1",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认目标位置是否属于依法或按标准应配置灭火器的范围。"
+      ]
+    },
+    {
+      "binding_id": "RB-EXT-EMPTY-XFF16-1-2",
+      "issue_code": "EXTINGUISHER_LOCATION_EMPTY",
+      "clause_id": "XFF-16-1-2",
+      "priority": 2,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于相关单位消防安全管理范围。",
+        "需确认目标位置是否属于依法或按标准应配置灭火器的范围。"
+      ]
+    },
+    {
+      "binding_id": "RB-FACILITY-OBSCURED-XFF16-1-2",
+      "issue_code": "FIRE_FACILITY_OBSCURED",
+      "clause_id": "XFF-16-1-2",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于相关单位消防安全管理范围。"
+      ]
+    },
+    {
+      "binding_id": "RB-FACILITY-OBSCURED-GB55037-6.5.1",
+      "issue_code": "FIRE_FACILITY_OBSCURED",
+      "clause_id": "GB55037-6.5.1",
+      "priority": 2,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认遮挡、改动或拆除是否由建筑内部装修造成。",
+        "需确认相关行为是否属于擅自减少、改动、拆除或遮挡。"
+      ]
+    },
+    {
+      "binding_id": "RB-FACILITY-DAMAGE-XFF28",
+      "issue_code": "FIRE_FACILITY_DAMAGED_OR_DISABLED",
+      "clause_id": "XFF-28",
+      "priority": 1,
+      "relation": "direct",
+      "missing_conditions": []
+    },
+    {
+      "binding_id": "RB-FACILITY-DAMAGE-XFF16-1-2",
+      "issue_code": "FIRE_FACILITY_DAMAGED_OR_DISABLED",
+      "clause_id": "XFF-16-1-2",
+      "priority": 2,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于相关单位消防安全管理范围。"
+      ]
+    },
+    {
+      "binding_id": "RB-WIRING-GB55037-10.2.3",
+      "issue_code": "ELECTRICAL_WIRING_VISIBLE_HAZARD",
+      "clause_id": "GB55037-10.2.3",
+      "priority": 1,
+      "relation": "direct",
+      "missing_conditions": []
+    },
+    {
+      "binding_id": "RB-WIRING-XFF27-2",
+      "issue_code": "ELECTRICAL_WIRING_VISIBLE_HAZARD",
+      "clause_id": "XFF-27-2",
+      "priority": 2,
+      "relation": "direct",
+      "missing_conditions": []
+    },
+    {
+      "binding_id": "RB-COMBUSTIBLE-ELECTRICAL-GBT13869-5.1.1-3",
+      "issue_code": "SUSPECTED_COMBUSTIBLE_NEAR_ELECTRICAL_PRODUCT",
+      "clause_id": "GBT13869-5.1.1-3",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认用电产品周边物品是否属于易燃、易爆或腐蚀性物品。"
+      ]
+    },
+    {
+      "binding_id": "RB-OPEN-FLAME-XFF21-HAZARD",
+      "issue_code": "OPEN_FLAME_VISIBLE",
+      "clause_id": "XFF-21-1",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于具有火灾、爆炸危险的场所。"
+      ]
+    },
+    {
+      "binding_id": "RB-OPEN-FLAME-GLGD20-HAZARD",
+      "issue_code": "OPEN_FLAME_VISIBLE",
+      "clause_id": "GLGD-20-1",
+      "priority": 2,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于相关单位消防安全管理范围。",
+        "需确认该场所是否属于具有火灾、爆炸危险的场所。"
+      ]
+    },
+    {
+      "binding_id": "RB-OPEN-FLAME-GLGD31",
+      "issue_code": "OPEN_FLAME_VISIBLE",
+      "clause_id": "GLGD-31-1-2",
+      "priority": 2,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于相关单位消防安全管理范围。",
+        "需确认该场所是否属于具有火灾、爆炸危险的场所。"
+      ]
+    },
+    {
+      "binding_id": "RB-SMOKING-XFF21",
+      "issue_code": "SMOKING_VISIBLE",
+      "clause_id": "XFF-21-1",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于具有火灾、爆炸危险的场所。"
+      ]
+    },
+    {
+      "binding_id": "RB-SMOKING-GLGD31",
+      "issue_code": "SMOKING_VISIBLE",
+      "clause_id": "GLGD-31-1-2",
+      "priority": 2,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于相关单位消防安全管理范围。",
+        "需确认该场所是否属于具有火灾、爆炸危险的场所。"
+      ]
+    },
+    {
+      "binding_id": "RB-STORAGE-SLEEP-GB55037-4.2.7",
+      "issue_code": "STORAGE_SLEEPING_COEXISTENCE",
+      "clause_id": "GB55037-4.2.7",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认建筑或相关区域的法定用途是否属于仓库。"
+      ]
+    },
+    {
+      "binding_id": "RB-MIXED-XFF19-1",
+      "issue_code": "MIXED_USE_SLEEPING_CONCERN",
+      "clause_id": "XFF-19-1",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认居住场所与生产、储存或经营场所是否位于同一建筑物内。",
+        "需确认相关生产、储存或经营活动是否涉及易燃易爆危险品。"
+      ]
+    },
+    {
+      "binding_id": "RB-MIXED-XFF19-2",
+      "issue_code": "MIXED_USE_SLEEPING_CONCERN",
+      "clause_id": "XFF-19-2",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认居住场所与生产、储存或经营场所是否位于同一建筑物内。",
+        "需确认相关生产、储存或经营活动所涉及物品的性质。"
+      ]
+    },
+    {
+      "binding_id": "RB-HAZMAT-XFF23",
+      "issue_code": "HAZARDOUS_MATERIAL_STORAGE_CONCERN",
+      "clause_id": "XFF-23-1",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认相关物品是否属于易燃易爆危险物品。"
+      ]
+    },
+    {
+      "binding_id": "RB-HAZMAT-GLGD22",
+      "issue_code": "HAZARDOUS_MATERIAL_STORAGE_CONCERN",
+      "clause_id": "GLGD-22",
+      "priority": 2,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认该场所是否属于相关单位消防安全管理范围。",
+        "需确认相关物品是否属于易燃易爆危险物品。"
+      ]
+    }
+  ]
+}

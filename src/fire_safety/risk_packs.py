@@ -22,6 +22,9 @@ from fire_safety.schemas import LegalRelation, RiskPriority
 
 LEGAL_DATA_DIR = PROJECT_ROOT / "data" / "legal"
 RISK_PACKS_DIR = LEGAL_DATA_DIR / "risk_packs"
+ISSUE_CODES_PATH = LEGAL_DATA_DIR / "issue_codes.json"
+RULE_BINDINGS_PATH = LEGAL_DATA_DIR / "rule_bindings.json"
+CLAUSES_PATH = LEGAL_DATA_DIR / "clauses.json"
 MANIFEST_FILENAME = "manifest.json"
 ISSUE_CODES_FILENAME = "issue_codes.json"
 RULE_BINDINGS_FILENAME = "rule_bindings.json"
@@ -105,20 +108,20 @@ class RuleCatalog(BaseModel):
         """Build a catalog from the legacy three-file payload shape."""
 
         try:
-            catalog = cls.model_validate(
-                {
-                    "schema_version": schema_version,
-                    "catalog_id": catalog_id,
-                    "issue_codes": _array_payload(issue_codes, "issue_codes"),
-                    "bindings": _array_payload(bindings, "bindings"),
-                    "clauses": _array_payload(clauses, "clauses"),
-                    "max_visible_clauses_per_finding": max_visible_clauses_per_finding,
-                }
-            )
-            _validate_catalog(catalog)
-        except (TypeError, ValueError, KeyError, ValidationError) as exc:
+            issue_items = _array_payload(issue_codes, "issue_codes")
+            binding_items = _array_payload(bindings, "bindings")
+            clause_items = _array_payload(clauses, "clauses")
+        except (TypeError, ValueError, KeyError) as exc:
             raise RuleDataError(f"法规规则包结构或引用无效：{exc}") from exc
-        return catalog
+        return _build_rule_catalog(
+            issue_codes=issue_items,
+            bindings=binding_items,
+            clauses=clause_items,
+            schema_version=schema_version,
+            catalog_id=catalog_id,
+            max_visible_clauses_per_finding=max_visible_clauses_per_finding,
+            error_context="法规规则包结构或引用无效",
+        )
 
 
 class _LoadedRiskPack(BaseModel):
@@ -164,38 +167,35 @@ def load_risk_pack_catalog(root: str | Path = RISK_PACKS_DIR) -> RuleCatalog:
     _validate_pack_item_uniqueness(enabled, "clauses", "clause_id")
 
     catalog_id = "+".join(pack.manifest.catalog_id for pack in enabled)
-    try:
-        catalog = RuleCatalog(
-            schema_version="1.0",
-            catalog_id=catalog_id,
-            issue_codes=tuple(item for pack in enabled for item in pack.issue_codes),
-            bindings=tuple(item for pack in enabled for item in pack.bindings),
-            clauses=tuple(item for pack in enabled for item in pack.clauses),
-        )
-        _validate_catalog(catalog)
-    except (TypeError, ValueError, ValidationError) as exc:
-        pack_ids = ", ".join(pack.manifest.pack_id for pack in enabled)
-        raise RuleDataError(f"Risk Pack 合并后结构或引用无效（{pack_ids}）：{exc}") from exc
-    return catalog
+    pack_ids = ", ".join(pack.manifest.pack_id for pack in enabled)
+    return _build_rule_catalog(
+        issue_codes=tuple(item for pack in enabled for item in pack.issue_codes),
+        bindings=tuple(item for pack in enabled for item in pack.bindings),
+        clauses=tuple(item for pack in enabled for item in pack.clauses),
+        schema_version="1.0",
+        catalog_id=catalog_id,
+        max_visible_clauses_per_finding=3,
+        error_context=f"Risk Pack 合并后结构或引用无效（{pack_ids}）",
+    )
 
 
 def load_rule_catalog(
-    issue_codes_path: str | Path | None = None,
-    bindings_path: str | Path | None = None,
-    clauses_path: str | Path | None = None,
+    issue_codes_path: str | Path = ISSUE_CODES_PATH,
+    bindings_path: str | Path = RULE_BINDINGS_PATH,
+    clauses_path: str | Path = CLAUSES_PATH,
     *,
     include_extensions: bool = False,
 ) -> RuleCatalog:
-    """Load the runtime packs or adapt an explicit legacy three-file catalog."""
+    """Load a legacy three-file catalog; no arguments preserve the v1 base catalog."""
 
-    paths = (issue_codes_path, bindings_path, clauses_path)
-    if all(path is None for path in paths):
+    selected_paths = tuple(
+        Path(path).resolve() for path in (issue_codes_path, bindings_path, clauses_path)
+    )
+    default_paths = tuple(
+        path.resolve() for path in (ISSUE_CODES_PATH, RULE_BINDINGS_PATH, CLAUSES_PATH)
+    )
+    if include_extensions and selected_paths == default_paths:
         return load_risk_pack_catalog()
-    if any(path is None for path in paths):
-        raise RuleDataError("旧版规则加载必须同时提供 issue_codes、bindings 和 clauses 路径")
-    # Retained for source compatibility. Extensions are now controlled only by
-    # discovered manifests, so this legacy flag has no effect on explicit files.
-    _ = include_extensions
 
     issue_payload = _read_json(issue_codes_path, "legacy catalog")
     binding_payload = _read_json(bindings_path, "legacy catalog")
@@ -288,6 +288,35 @@ def _array_payload(payload: object, field: str) -> list[object]:
     return payload[field]
 
 
+def _build_rule_catalog(
+    *,
+    issue_codes: Sequence[object],
+    bindings: Sequence[object],
+    clauses: Sequence[object],
+    schema_version: str,
+    catalog_id: str,
+    max_visible_clauses_per_finding: int,
+    error_context: str,
+) -> RuleCatalog:
+    """Build and cross-validate the catalog used by every loading entry point."""
+
+    try:
+        catalog = RuleCatalog.model_validate(
+            {
+                "schema_version": schema_version,
+                "catalog_id": catalog_id,
+                "issue_codes": issue_codes,
+                "bindings": bindings,
+                "clauses": clauses,
+                "max_visible_clauses_per_finding": max_visible_clauses_per_finding,
+            }
+        )
+        _validate_catalog(catalog)
+    except (TypeError, ValueError, KeyError, ValidationError) as exc:
+        raise RuleDataError(f"{error_context}：{exc}") from exc
+    return catalog
+
+
 def _validate_catalog(catalog: RuleCatalog) -> None:
     _validate_unique(catalog.issue_codes, "code")
     _validate_unique(catalog.bindings, "binding_id")
@@ -340,12 +369,15 @@ def _int_field(payload: object, field: str, default: int) -> int:
 
 
 __all__ = [
+    "CLAUSES_PATH",
     "CLAUSES_FILENAME",
     "ISSUE_CODES_FILENAME",
+    "ISSUE_CODES_PATH",
     "LEGAL_DATA_DIR",
     "MANIFEST_FILENAME",
     "RISK_PACKS_DIR",
     "RULE_BINDINGS_FILENAME",
+    "RULE_BINDINGS_PATH",
     "Clause",
     "IssueCodeDefinition",
     "RiskPackManifest",

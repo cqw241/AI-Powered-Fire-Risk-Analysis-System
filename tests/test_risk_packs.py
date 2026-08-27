@@ -4,6 +4,7 @@ import json
 
 import pytest
 
+import fire_safety.risk_packs as risk_packs
 from fire_safety.risk_packs import RuleDataError, load_risk_pack_catalog
 
 
@@ -104,6 +105,23 @@ def test_unknown_cross_pack_reference_is_rejected_after_merge(tmp_path) -> None:
 
     with pytest.raises(RuleDataError, match="unknown issue code: UNKNOWN"):
         load_risk_pack_catalog(tmp_path)
+
+
+def test_legacy_and_risk_pack_loaders_share_the_catalog_builder(tmp_path, monkeypatch) -> None:
+    _write_pack(tmp_path, "pack", "pack", "CODE")
+    calls = []
+    original = risk_packs._build_rule_catalog
+
+    def recording_builder(**kwargs):
+        calls.append(kwargs["catalog_id"])
+        return original(**kwargs)
+
+    monkeypatch.setattr(risk_packs, "_build_rule_catalog", recording_builder)
+
+    risk_packs.load_rule_catalog()
+    risk_packs.load_risk_pack_catalog(tmp_path)
+
+    assert calls == ["cn-mainland-v1-clauses", "pack-catalog"]
 
 
 def _write_pack(tmp_path, directory_name, pack_id, code, *, enabled=True):
