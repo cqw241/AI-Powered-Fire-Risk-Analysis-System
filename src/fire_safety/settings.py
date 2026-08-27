@@ -1,6 +1,7 @@
 """Application settings for the fire risk analysis system."""
 
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -23,6 +24,7 @@ class Settings(BaseSettings):
     qwen_base_url: str | None = None
     qwen_api_key: SecretStr | None = None
     qwen_model: str = "Qwen3.8-27B"
+    qwen_reasoning_effort: Literal["low", "medium", "xhigh"] = "low"
 
     max_image_bytes: int = Field(default=10 * 1024 * 1024, gt=0)
     max_image_width: int = Field(default=8192, gt=0)
