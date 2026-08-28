@@ -1,0 +1,140 @@
+{
+
+    "issue_codes": [
+
+    {
+
+      "code": "ELECTRICAL_WIRING_VISIBLE_DAMAGE",
+
+      "display_name": "电气线路存在明显可见损伤",
+
+      "definition": "画面中的电线、电缆、接线部位或其绝缘、防护结构存在清晰可见的破裂、开裂、剥落、严重磨损、缺损或导体暴露等物理损伤迹象。",
+
+      "default_priority": "high",
+
+      "default_action": "停止继续使用存在明显损伤的相关线路或设备，由专业人员现场检查绝缘、导体及连接状态，并根据实际情况进行修复或更换。"
+
+    },
+
+    {
+
+      "code": "WIRING_ENTRY_DAMAGE_OR_PROTECTION_MISSING",
+
+      "display_name": "线缆出入口可见损伤或防护缺失",
+
+      "definition": "电线或电缆在出入电缆桥架、电缆槽盒、配电箱或配电柜的位置存在清晰可见的磨损、挤压、割伤，或者出入口明显缺少防止线缆损伤的防护结构。",
+
+      "default_priority": "high",
+
+      "default_action": "停止可能继续损伤线缆的使用状态，由专业人员检查线缆出入口、固定状态和机械防护，并修复受损线缆或补齐防护措施。"
+
+    },
+
+    {
+
+      "code": "ELECTRICAL_OVERHEAT_VISIBLE_SIGNS",
+
+      "display_name": "电气部件可见过热或烧灼痕迹",
+
+      "definition": "插头、插座、接线部位、电线电缆或其他电气连接位置存在清晰可见的焦黑、熔化、烧灼、异常变形或明显热损伤迹象。",
+
+      "default_priority": "high",
+
+      "default_action": "立即停止使用该回路或设备，由专业电工排查过热原因并更换受损部件。"
+
+    },
+
+    {
+
+      "code": "POWER_STRIP_DAISY_CHAIN",
+
+      "display_name": "移动式插座存在级联连接",
+
+      "definition": "画面中能够清晰确认一个移动式插座、插线板或延长插座直接通过插头连接到另一个移动式插座、插线板或延长插座，形成级联供电关系。",
+
+      "default_priority": "high",
+
+      "default_action": "停止移动式插座级联使用，核实现场用电需求，并采用与实际负荷和使用环境相适应的固定供电或规范供电方式。"
+
+    },
+
+    {
+
+      "code": "TEMPORARY_WIRING_VISIBLE_HAZARD",
+
+      "display_name": "临时线路存在明显危险敷设状态",
+
+      "definition": "画面中的临时、拖接或非固定电气线路存在明显随意跨越、悬挂、缠绕、受挤压、受机械损伤风险或缺少必要防护等可见危险敷设状态；仅出现可移动电源线本身不构成本代码。",
+
+      "default_priority": "high",
+
+      "default_action": "停止或调整存在明显危险敷设状态的临时线路，由专业人员核实线路用途、敷设方式和机械防护要求。"
+
+    },
+
+    {
+
+      "code": "ELECTRICAL_WIRING_VISIBLE_HAZARD",
+
+      "display_name": "电气线路可见危险敷设状态",
+
+      "definition": "非临时电气线路存在靠近高温部位、直接敷设在疑似可燃物上，或明敷线路明显缺少防火保护等可见危险状态。",
+
+      "default_priority": "high",
+
+      "default_action": "停止可能加剧风险的用电状态，并由专业人员检查线路敷设和防护。"
+
+    },
+
+    {
+
+      "code": "DISTRIBUTION_BOX_OPEN_OR_DAMAGED",
+
+      "display_name": "配电箱明显开启、缺失防护或损坏",
+
+      "definition": "已识别的配电箱、配电柜或类似电气箱体存在箱门或面板明显开启、缺失、破损，或者内部电气部件因防护结构异常而明显暴露的可见状态。",
+
+      "default_priority": "high",
+
+      "default_action": "限制无关人员接近，由专业人员检查配电箱防护结构、箱门或盖板状态，并恢复正常封闭和防护。"
+
+    },
+
+    {
+
+      "code": "COMBUSTIBLE_NEAR_ELECTRICAL_EQUIPMENT",
+
+      "display_name": "疑似可燃或危险物品紧邻用电设备",
+
+      "definition": "用电产品、电气装置或配电设备周边存在纸箱、织物、塑料包装等明显可燃物，或疑似易燃、易爆、腐蚀性物品，并形成清晰可见的紧邻、覆盖或堆靠关系；材料法律或技术分类由法规适用层另行判断。",
+
+      "default_priority": "medium",
+
+      "default_action": "移除用电设备周边明显堆靠的可燃或危险物品，并由现场人员核实材料属性、设备散热、使用环境和必要安全间距。"
+
+    },
+
+    {
+
+      "code": "ELECTRICAL_EQUIPMENT_NEAR_WATER",
+
+      "display_name": "用电设备与水存在明显危险接近关系",
+
+      "definition": "已识别的配电箱柜、插座、开关或电线等用电设备与积水、水流或明显可能造成直接浸水、淋水的区域形成清晰可见的危险接近关系。",
+
+      "default_priority": "high",
+
+      "default_action": "停止可能受到水影响的相关用电活动，隔离水源或设备，核实设备防护等级与安装环境是否匹配，必要时断电后由专业电工检查。"
+
+    },
+    {
+      "code": "EV_BATTERY_INDOOR_CHARGING_CONCERN",
+      "display_name": "电动自行车或蓄电池疑似在室内区域充电",
+      "definition": "画面中电动自行车、电动摩托车或其可拆卸蓄电池位于建筑室内，并存在充电器、插头或线缆连接等可见充电迹象；该区域的法定用途和禁止停放充电范围由法规适用层另行判断。",
+      "default_priority": "high",
+      "default_action": "停止在该区域充电，将车辆或电池移至符合要求的集中充电场所，并核实该区域是否属于禁止停放充电的范围。"
+    }
+
+  ]
+
+}

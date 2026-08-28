@@ -107,7 +107,9 @@ def test_unknown_cross_pack_reference_is_rejected_after_merge(tmp_path) -> None:
         load_risk_pack_catalog(tmp_path)
 
 
-def test_legacy_and_risk_pack_loaders_share_the_catalog_builder(tmp_path, monkeypatch) -> None:
+def test_default_and_explicit_risk_pack_loaders_share_the_catalog_builder(
+    tmp_path, monkeypatch
+) -> None:
     _write_pack(tmp_path, "pack", "pack", "CODE")
     calls = []
     original = risk_packs._build_rule_catalog
@@ -121,7 +123,7 @@ def test_legacy_and_risk_pack_loaders_share_the_catalog_builder(tmp_path, monkey
     risk_packs.load_rule_catalog()
     risk_packs.load_risk_pack_catalog(tmp_path)
 
-    assert calls == ["cn-mainland-v1-clauses", "pack-catalog"]
+    assert calls == ["cn-mainland-electrical-v1+cn-mainland-fire-v1.2", "pack-catalog"]
 
 
 def _write_pack(tmp_path, directory_name, pack_id, code, *, enabled=True):

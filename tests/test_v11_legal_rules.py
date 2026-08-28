@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from fire_safety.qwen import build_visual_prompt
 from fire_safety.risk_packs import RISK_PACKS_DIR, load_risk_pack_catalog
 from fire_safety.rules import (
@@ -9,30 +11,19 @@ from fire_safety.rules import (
 )
 
 
-def test_no_argument_legacy_loader_preserves_the_v1_base_catalog() -> None:
-    catalog = load_rule_catalog()
-
-    assert catalog.catalog_id == "cn-mainland-v1-clauses"
-    assert len(catalog.issue_codes) == 23
-    assert len(catalog.bindings) == 54
-    assert len(catalog.clauses) == 25
-    assert "SPRINKLER_OBSTRUCTED" not in {item.code for item in catalog.issue_codes}
-    assert "GB55036-2.0.9" not in {item.clause_id for item in catalog.clauses}
+def test_no_argument_loader_maps_to_the_runtime_catalog() -> None:
+    assert load_rule_catalog() == get_rule_catalog()
 
 
-def test_legacy_include_extensions_call_maps_to_the_runtime_catalog() -> None:
-    assert load_rule_catalog(include_extensions=True) == get_rule_catalog()
-
-
-def test_runtime_catalog_is_loaded_from_the_enabled_risk_pack() -> None:
+def test_runtime_catalog_is_loaded_from_the_enabled_risk_packs() -> None:
     catalog = get_rule_catalog()
 
     counts = (len(catalog.issue_codes), len(catalog.bindings), len(catalog.clauses))
-    assert catalog.catalog_id == "cn-mainland-v1.1"
+    assert catalog.catalog_id == "cn-mainland-electrical-v1+cn-mainland-fire-v1.2"
     assert counts == (
-        25,
-        58,
-        29,
+        33,
+        70,
+        39,
     )
     clause_ids = {item.clause_id for item in catalog.clauses}
     issue_codes = {item.code for item in catalog.issue_codes}
@@ -46,8 +37,47 @@ def test_runtime_catalog_is_loaded_from_the_enabled_risk_pack() -> None:
     assert {
         "SPRINKLER_OBSTRUCTED",
         "FIRE_FACILITY_MARKING_OBSCURED_OR_DEFECTIVE",
+        "ELECTRICAL_WIRING_VISIBLE_DAMAGE",
     } <= issue_codes
+    assert "GB55024-10.4.1" in clause_ids
+    assert "SUSPECTED_COMBUSTIBLE_NEAR_ELECTRICAL_PRODUCT" not in issue_codes
+    assert {"GB55024-8.7.6-3", "GB55024-8.7.8-2"} <= {
+        item.clause_id
+        for item in catalog.bindings
+        if item.issue_code == "WIRING_ENTRY_DAMAGE_OR_PROTECTION_MISSING"
+    }
     assert catalog == load_risk_pack_catalog(RISK_PACKS_DIR)
+
+
+def test_electrical_rules_are_owned_by_the_electrical_pack() -> None:
+    electrical_dir = RISK_PACKS_DIR / "cn-mainland-electrical-safety"
+    fire_dir = RISK_PACKS_DIR / "cn-mainland-fire-safety"
+    electrical_codes = {
+        item["code"]
+        for item in json.loads((electrical_dir / "issue_codes.json").read_text())["issue_codes"]
+    }
+    electrical_clauses = {
+        item["clause_id"]
+        for item in json.loads((electrical_dir / "clauses.json").read_text())["clauses"]
+    }
+    fire_codes = {
+        item["code"]
+        for item in json.loads((fire_dir / "issue_codes.json").read_text())["issue_codes"]
+    }
+    assert "ELECTRICAL_WIRING_VISIBLE_HAZARD" in electrical_codes
+    assert "SUSPECTED_COMBUSTIBLE_NEAR_ELECTRICAL_PRODUCT" not in electrical_codes
+    assert {"XFF-27-2", "GB55037-10.2.3", "GBT13869-5.1.1-3"} <= electrical_clauses
+    assert "ELECTRICAL_WIRING_VISIBLE_HAZARD" not in fire_codes
+    assert "SUSPECTED_COMBUSTIBLE_NEAR_ELECTRICAL_PRODUCT" not in fire_codes
+
+
+def test_power_strip_daisy_chain_is_intentionally_unbound() -> None:
+    catalog = get_rule_catalog()
+
+    assert "POWER_STRIP_DAISY_CHAIN" in {item.code for item in catalog.issue_codes}
+    assert not any(
+        item.issue_code == "POWER_STRIP_DAISY_CHAIN" for item in catalog.bindings
+    )
 
 
 def test_verified_gb55036_clause_text_is_exact_checked_in_text() -> None:
