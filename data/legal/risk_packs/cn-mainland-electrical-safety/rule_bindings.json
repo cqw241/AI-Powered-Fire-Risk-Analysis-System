@@ -1,0 +1,114 @@
+{
+  "max_visible_clauses_per_finding": 3,
+  "bindings": [
+    {
+      "binding_id": "RB-ELEC-WIRING-DAMAGE-GB55024-10.4.1",
+      "issue_code": "ELECTRICAL_WIRING_VISIBLE_DAMAGE",
+      "clause_id": "GB55024-10.4.1",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认图片中的可见损伤已构成实际故障。"
+      ]
+    },
+    {
+      "binding_id": "RB-ELEC-WIRING-DAMAGE-GB55024-8.7.9-1",
+      "issue_code": "ELECTRICAL_WIRING_VISIBLE_DAMAGE",
+      "clause_id": "GB55024-8.7.9-1",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认可见损伤发生在导线接头处。",
+        "需确认该接头裸露，或其绝缘处理不符合本条要求。"
+      ]
+    },
+    {
+      "binding_id": "RB-ELEC-WIRING-DAMAGE-GB55024-6.2.6-1",
+      "issue_code": "ELECTRICAL_WIRING_VISIBLE_DAMAGE",
+      "clause_id": "GB55024-6.2.6-1",
+      "priority": 2,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认可见裸露部分属于带电导体，而不是已断电、接地或其他非带电金属部件。",
+        "需确认该状态属于本条所指的裸露带电导体布线情形。"
+      ]
+    },
+    {
+      "binding_id": "RB-ELEC-OVERHEAT-GB55024-10.4.1",
+      "issue_code": "ELECTRICAL_OVERHEAT_VISIBLE_SIGNS",
+      "clause_id": "GB55024-10.4.1",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认焦黑、熔化、烧灼或异常变形等可见迹象对应当前或既往的实际电气故障。"
+      ]
+    },
+    {
+      "binding_id": "RB-ELEC-TEMP-WIRING-GB55024-8.7.8-3",
+      "issue_code": "TEMPORARY_WIRING_VISIBLE_HAZARD",
+      "clause_id": "GB55024-8.7.8-3",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认相关线路属于塑料护套线。",
+        "需确认线路存在直接敷设在可燃物表面的情形；"
+      ]
+    },
+    {
+      "binding_id": "RB-ELEC-DISTBOX-DAMAGE-GB55024-10.4.1",
+      "issue_code": "DISTRIBUTION_BOX_OPEN_OR_DAMAGED",
+      "clause_id": "GB55024-10.4.1",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认配电箱柜的开启、缺失防护或损坏状态已构成需要维修的实际故障。"
+      ]
+    },
+    {
+      "binding_id": "RB-ELEC-COMBUSTIBLE-NEAR-EQUIP-GB55024-8.5.3-8",
+      "issue_code": "COMBUSTIBLE_NEAR_ELECTRICAL_EQUIPMENT",
+      "clause_id": "GB55024-8.5.3-8",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认邻近可燃物的高温部位属于灯具表面或其附件的高温部位。",
+        "需确认邻近物确属可燃物。",
+        "需确认现场未采取符合本条要求的隔热、散热或其他防火保护措施。"
+      ]
+    },
+    {
+      "binding_id": "RB-ELEC-WATER-GB55024-8.4.3-2",
+      "issue_code": "ELECTRICAL_EQUIPMENT_NEAR_WATER",
+      "clause_id": "GB55024-8.4.3-2",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认画面中的电气设备为配电箱或配电柜。",
+        "需确认其实际设置位置位于水管接头下方；"
+      ]
+    },
+    {
+      "binding_id": "RB-ELEC-WATER-GB55024-8.5.1",
+      "issue_code": "ELECTRICAL_EQUIPMENT_NEAR_WATER",
+      "clause_id": "GB55024-8.5.1",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认相关用电设备安装在室外或潮湿场所。",
+        "需确认该设备未采取符合要求的防水防潮措施。"
+      ]
+    },
+    {
+      "binding_id": "RB-ELEC-EV-CHARGING-GCMJZ-37-1",
+      "issue_code": "EV_BATTERY_INDOOR_CHARGING_CONCERN",
+      "clause_id": "GCMJZ-37-1",
+      "priority": 1,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认所在建筑属于高层民用建筑。",
+        "需确认充电位置属于公共门厅、疏散走道、楼梯间或安全出口区域。",
+        "需确认充电对象属于电动自行车，且现场行为属于为电动自行车充电。"
+      ]
+    }
+  ]
+}
