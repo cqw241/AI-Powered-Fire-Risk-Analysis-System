@@ -24,15 +24,15 @@ def test_legacy_include_extensions_call_maps_to_the_runtime_catalog() -> None:
     assert load_rule_catalog(include_extensions=True) == get_rule_catalog()
 
 
-def test_runtime_catalog_is_loaded_from_the_enabled_risk_pack() -> None:
+def test_runtime_catalog_is_loaded_from_the_enabled_risk_packs() -> None:
     catalog = get_rule_catalog()
 
     counts = (len(catalog.issue_codes), len(catalog.bindings), len(catalog.clauses))
-    assert catalog.catalog_id == "cn-mainland-v1.1"
+    assert catalog.catalog_id == "cn-mainland-electrical-v1+cn-mainland-v1.1"
     assert counts == (
-        25,
-        58,
-        29,
+        33,
+        68,
+        39,
     )
     clause_ids = {item.clause_id for item in catalog.clauses}
     issue_codes = {item.code for item in catalog.issue_codes}
@@ -46,7 +46,9 @@ def test_runtime_catalog_is_loaded_from_the_enabled_risk_pack() -> None:
     assert {
         "SPRINKLER_OBSTRUCTED",
         "FIRE_FACILITY_MARKING_OBSCURED_OR_DEFECTIVE",
+        "ELECTRICAL_WIRING_VISIBLE_DAMAGE",
     } <= issue_codes
+    assert "GB55024-10.4.1" in clause_ids
     assert catalog == load_risk_pack_catalog(RISK_PACKS_DIR)
 
 
