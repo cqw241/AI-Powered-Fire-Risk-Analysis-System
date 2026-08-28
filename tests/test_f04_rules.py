@@ -57,14 +57,6 @@ def test_direct_bindings_sort_before_conditional_bindings(tmp_path) -> None:
     assert [item.clause_id for item in associations] == ["T-DIRECT", "T-CONDITIONAL"]
 
 
-def test_legacy_include_extensions_keyword_remains_callable(tmp_path) -> None:
-    paths = _write_catalog_files(tmp_path)
-
-    catalog = load_rule_catalog(*paths, include_extensions=True)
-
-    assert catalog.catalog_id == "test"
-
-
 def test_missing_binding_keeps_finding_actionable() -> None:
     catalog = load_rule_catalog()
 
@@ -111,7 +103,10 @@ def test_checked_in_clauses_cite_their_own_source() -> None:
         "XFF": {"中华人民共和国消防法"},
         "GLGD": {"机关、团体、企业、事业单位消防安全管理规定"},
         "GB55037": {"建筑防火通用规范 GB 55037-2022"},
+        "GB55036": {"消防设施通用规范 GB 55036-2022"},
+        "GB55024": {"建筑电气与智能化通用规范 GB 55024-2022"},
         "GBT13869": {"用电安全导则 GB/T 13869-2017"},
+        "GCMJZ": {"高层民用建筑消防安全管理规定"},
     }
 
 

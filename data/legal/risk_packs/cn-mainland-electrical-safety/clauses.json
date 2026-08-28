@@ -102,6 +102,39 @@
       "engineering_note": "焦黑、熔化、烧灼、异常变形或明显破损可以作为需要现场检查的故障线索，但图片不能单独证明系统已构成技术意义上的故障，也不能确认维修是否及时。适合作为条件性关联，而非仅凭外观直接形成合规结论。"
     },
     {
+      "clause_id": "XFF-27-2",
+      "source_name": "中华人民共和国消防法",
+      "source_code": "XFF",
+      "clause_number": "第二十七条第二款",
+      "clause_text": "电器产品、燃气用具的安装、使用及其线路、管路的设计、敷设、维护保养、检测，必须符合消防技术标准和管理规定。",
+      "effective": true,
+      "verified_at": "2026-08-13",
+      "verification_source": "business_review",
+      "engineering_note": "可观察线路靠近高温部位、直接敷设在可燃物上、明显裸露或缺少保护等外观状态；完整的设计、安装、维护和检测合规性需现场检查或技术资料。"
+    },
+    {
+      "clause_id": "GB55037-10.2.3",
+      "source_name": "建筑防火通用规范 GB 55037-2022",
+      "source_code": "GB55037",
+      "clause_number": "10.2.3",
+      "clause_text": "电气线路的敷设应符合下列规定：1 电气线路敷设应避开炉灶、烟囱等高温部位及其他可能受高温作业影响的部位，不应直接敷设在可燃物上；2 室内明敷的电气线路，在有可燃物的吊顶或难燃性、可燃性墙体内敷设的电气线路，应具有相应的防火性能或防火保护措施；3 室外电缆沟或电缆隧道在进入建筑、工程或变电站处应采取防火分隔措施，防火分隔部位的耐火极限不应低于2.00h，门应采用甲级防火门。",
+      "effective": true,
+      "verified_at": "2026-08-13",
+      "verification_source": "business_review",
+      "engineering_note": "可观察线路靠近高温部位、直接敷设在可燃物上、明敷线路明显缺少保护等状态；防火性能、耐火极限等技术指标需技术资料或现场检查。"
+    },
+    {
+      "clause_id": "GBT13869-5.1.1-3",
+      "source_name": "用电安全导则 GB/T 13869-2017",
+      "source_code": "GBT13869",
+      "clause_number": "5.1.1 第三项",
+      "clause_text": "一般条件下，用电产品的周围应留有足够的安全通道和工作空间，且不应堆放易燃、易爆和腐蚀性物品。",
+      "effective": true,
+      "verified_at": "2026-08-13",
+      "verification_source": "business_review",
+      "engineering_note": "可观察用电产品周边易燃、易爆或腐蚀性物品的堆放和空间关系；物品属性无法由清晰标签或可靠上下文确认时，应保持未知。"
+    },
+    {
       "clause_id": "GCMJZ-37-1",
       "source_name": "高层民用建筑消防安全管理规定",
       "source_code": "GCMJZ",

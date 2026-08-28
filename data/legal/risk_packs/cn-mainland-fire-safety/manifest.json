@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "pack_id": "cn-mainland-fire-safety",
-  "version": "1.1",
-  "catalog_id": "cn-mainland-v1.1",
+  "version": "1.2",
+  "catalog_id": "cn-mainland-fire-v1.2",
   "enabled": true
 }

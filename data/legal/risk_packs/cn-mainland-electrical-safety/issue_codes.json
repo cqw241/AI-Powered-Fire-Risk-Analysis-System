@@ -18,6 +18,20 @@
 
     {
 
+      "code": "WIRING_ENTRY_DAMAGE_OR_PROTECTION_MISSING",
+
+      "display_name": "线缆出入口可见损伤或防护缺失",
+
+      "definition": "电线或电缆在出入电缆桥架、电缆槽盒、配电箱或配电柜的位置存在清晰可见的磨损、挤压、割伤，或者出入口明显缺少防止线缆损伤的防护结构。",
+
+      "default_priority": "high",
+
+      "default_action": "停止可能继续损伤线缆的使用状态，由专业人员检查线缆出入口、固定状态和机械防护，并修复受损线缆或补齐防护措施。"
+
+    },
+
+    {
+
       "code": "ELECTRICAL_OVERHEAT_VISIBLE_SIGNS",
 
       "display_name": "电气部件可见过热或烧灼痕迹",
@@ -60,11 +74,25 @@
 
     {
 
+      "code": "ELECTRICAL_WIRING_VISIBLE_HAZARD",
+
+      "display_name": "电气线路可见危险敷设状态",
+
+      "definition": "非临时电气线路存在靠近高温部位、直接敷设在疑似可燃物上，或明敷线路明显缺少防火保护等可见危险状态。",
+
+      "default_priority": "high",
+
+      "default_action": "停止可能加剧风险的用电状态，并由专业人员检查线路敷设和防护。"
+
+    },
+
+    {
+
       "code": "DISTRIBUTION_BOX_OPEN_OR_DAMAGED",
 
       "display_name": "配电箱明显开启、缺失防护或损坏",
 
-      "definition": "已识别的配电箱、配电柜或类似电气箱体存在箱门或面板明显开启、缺失、破损，或者内部电气部件因防护结构异常而明显暴露的可见状态；",
+      "definition": "已识别的配电箱、配电柜或类似电气箱体存在箱门或面板明显开启、缺失、破损，或者内部电气部件因防护结构异常而明显暴露的可见状态。",
 
       "default_priority": "high",
 
@@ -76,13 +104,13 @@
 
       "code": "COMBUSTIBLE_NEAR_ELECTRICAL_EQUIPMENT",
 
-      "display_name": "可燃物明显紧邻用电设备或电气装置",
+      "display_name": "疑似可燃或危险物品紧邻用电设备",
 
-      "definition": "电气装置、配电设备周边存在纸箱、纸张、织物、塑料包装或其他具有明显可燃特征的物品，并形成清晰可见的紧邻、覆盖或堆靠关系；材料法律或技术分类由法规适用层另行判断。",
+      "definition": "用电产品、电气装置或配电设备周边存在纸箱、织物、塑料包装等明显可燃物，或疑似易燃、易爆、腐蚀性物品，并形成清晰可见的紧邻、覆盖或堆靠关系；材料法律或技术分类由法规适用层另行判断。",
 
       "default_priority": "medium",
 
-      "default_action": "移除电气设备和装置周边明显堆靠的可燃物，并由现场人员核实设备散热、使用环境和必要安全间距。"
+      "default_action": "移除用电设备周边明显堆靠的可燃或危险物品，并由现场人员核实材料属性、设备散热、使用环境和必要安全间距。"
 
     },
 
@@ -92,7 +120,7 @@
 
       "display_name": "用电设备与水存在明显危险接近关系",
 
-      "definition": "已识别的配电箱柜、插座、开关或电线等用电设备与积水、水流或明显可能造成直接浸水、淋水的区域形成清晰可见的危险接近关系；",
+      "definition": "已识别的配电箱柜、插座、开关或电线等用电设备与积水、水流或明显可能造成直接浸水、淋水的区域形成清晰可见的危险接近关系。",
 
       "default_priority": "high",
 

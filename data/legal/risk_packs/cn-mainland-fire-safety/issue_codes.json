@@ -113,20 +113,6 @@
       "default_action": "停止继续影响该消防设施的行为，并安排现场检查、恢复或维修。"
     },
     {
-      "code": "ELECTRICAL_WIRING_VISIBLE_HAZARD",
-      "display_name": "电气线路可见危险敷设状态",
-      "definition": "电气线路存在靠近高温部位、直接敷设在疑似可燃物上或明敷线路明显缺少防护等可见危险状态。",
-      "default_priority": "high",
-      "default_action": "停止可能加剧风险的用电状态，并由专业人员检查线路敷设和防护。"
-    },
-    {
-      "code": "SUSPECTED_COMBUSTIBLE_NEAR_ELECTRICAL_PRODUCT",
-      "display_name": "疑似可燃物靠近用电产品",
-      "definition": "用电产品周边存在疑似易燃、易爆或腐蚀性物品并形成明显近距离堆放关系；材料法律/技术属性由法规适用层判断。",
-      "default_priority": "medium",
-      "default_action": "移开用电产品周边疑似可燃、易爆或腐蚀性物品，并核实材料属性和安全间隔。"
-    },
-    {
       "code": "OPEN_FLAME_VISIBLE",
       "display_name": "可见明火或热作业",
       "definition": "画面中直接可见明火、火焰或焊接、切割等热作业行为。",

@@ -1,12 +1,12 @@
-# Qwen3.8-27B 消防风险分析系统 MVP
+# Qwen3.8-27B 消防与电气安全风险分析系统 MVP
 
-当前已完成 F01–F05：工程与 Gradio 页面骨架、图片处理、Qwen 结构化视觉分析、确定性法规关联、Pipeline 和最终结果展示。系统已具备从单图上传到风险结果展示的完整 MVP 链路；F06 仍需补充五类真实图片的人工端到端验收记录。
+当前已完成 F01–F05：工程与 Gradio 页面骨架、图片处理、Qwen 结构化视觉分析、确定性法规关联、Pipeline 和最终结果展示。系统已具备从单图上传到消防、电气安全风险结果展示的完整 MVP 链路；F06 仍需补充五类真实图片的人工端到端验收记录。
 
 ## 目标
 
 完成以下端到端链路：
 
-> 上传一张消防场景图片 → Qwen3.8-27B 开放视觉分析 → 结构化风险 → 确定性法规关联 → Gradio 可视化结果
+> 上传一张安全检查场景图片 → Qwen3.8-27B 开放视觉分析 → 结构化风险 → 确定性法规关联 → Gradio 可视化结果
 
 ## 技术栈
 
@@ -126,10 +126,17 @@ Loader 校验所有 manifest，只加载 `enabled: true` 的规则数据；多�
 Binding ID 或 Clause ID 重复时拒绝加载，不进行覆盖。新增领域规则原则上只需增加这样的目录，
 无需修改核心 Python 代码。
 
-生产运行时通过 `get_rule_catalog()` 加载上述 Risk Packs。为保持已有调用兼容，
-`load_rule_catalog()` 无参数调用仍加载 `data/legal` 下的 v1 基础三文件；显式传入三条文件路径时
-仍加载对应 legacy Catalog。旧调用 `load_rule_catalog(include_extensions=True)` 映射到 manifest 运行时
-Catalog。两类入口最终复用同一个 RuleCatalog 构建和跨引用校验函数。
+生产运行时通过 `get_rule_catalog()` 加载上述 Risk Packs。`load_rule_catalog()` 无参数调用加载同一套
+manifest 驱动的运行时 Catalog；显式同时传入三条 JSON 文件路径时，可加载测试或外部提供的独立
+Catalog。`data/legal` 顶层不再保留旧版三文件，规则数据只在各 Risk Pack 中维护。
+
+当前启用两个规则包：
+
+- `cn-mainland-fire-safety`：消防通道、消防设施、明火和场所使用等消防安全规则；
+- `cn-mainland-electrical-safety`：线路、配电设施、用电环境和电动自行车充电等电气安全规则。
+
+电气线路敷设及用电产品周边危险物品规则归 electrical pack 所有，避免同一视觉风险在两个包中
+出现语义重叠的 Issue Code。
 
 ## 实现规则
 
@@ -147,6 +154,8 @@ Qwen 不输出法规名称、法规编号、条款号、条款原文或违法结
 ### Issue Code
 
 程序只接受 `issue_codes.json` 中存在的 Code。无有效 Code 的 Finding 仍然展示，法规列表为空。
+允许受控 Issue Code 暂时没有法规绑定；例如 `POWER_STRIP_DAISY_CHAIN` 当前作为可行动的视觉风险
+保留，但在没有经核验的适用条款前返回 `no_binding`，不会生成法规关联。
 
 ### 法规关联
 
@@ -182,7 +191,7 @@ bbox 使用 0-1000 归一化坐标：
 | F05 | 已完成 | Pipeline、AnalysisResult 和最终 Gradio 展示 |
 | F06 | 进行中 | 自动化测试已完成；待补充五类真实图片端到端验收记录 |
 
-当前启用规则包包含 25 个 Issue Code、29 条法规条款和 58 条规则绑定。测试与静态检查结果：
+当前启用规则包包含 33 个 Issue Code、39 条法规条款和 70 条规则绑定。测试与静态检查结果：
 
 ```text
 117 passed

@@ -34,6 +34,28 @@
       ]
     },
     {
+      "binding_id": "RB-ELEC-WIRING-DAMAGE-GB55024-8.7.6-3",
+      "issue_code": "WIRING_ENTRY_DAMAGE_OR_PROTECTION_MISSING",
+      "clause_id": "GB55024-8.7.6-3",
+      "priority": 2,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认可见损伤发生在电缆出入电缆桥架或配电箱柜的位置。",
+        "需确认出入口未采取符合要求的防损伤措施。"
+      ]
+    },
+    {
+      "binding_id": "RB-ELEC-WIRING-DAMAGE-GB55024-8.7.8-2",
+      "issue_code": "WIRING_ENTRY_DAMAGE_OR_PROTECTION_MISSING",
+      "clause_id": "GB55024-8.7.8-2",
+      "priority": 2,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认可见损伤发生在电线出入电缆槽盒或配电箱柜的位置。",
+        "需确认出入口未采取符合要求的防损伤措施。"
+      ]
+    },
+    {
       "binding_id": "RB-ELEC-OVERHEAT-GB55024-10.4.1",
       "issue_code": "ELECTRICAL_OVERHEAT_VISIBLE_SIGNS",
       "clause_id": "GB55024-10.4.1",
@@ -52,6 +74,24 @@
       "missing_conditions": [
         "需确认相关线路属于塑料护套线。",
         "需确认线路存在直接敷设在可燃物表面的情形；"
+      ]
+    },
+    {
+      "binding_id": "RB-WIRING-GB55037-10.2.3",
+      "issue_code": "ELECTRICAL_WIRING_VISIBLE_HAZARD",
+      "clause_id": "GB55037-10.2.3",
+      "priority": 1,
+      "relation": "direct",
+      "missing_conditions": []
+    },
+    {
+      "binding_id": "RB-WIRING-XFF27-2",
+      "issue_code": "ELECTRICAL_WIRING_VISIBLE_HAZARD",
+      "clause_id": "XFF-27-2",
+      "priority": 2,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认线路的完整设计、敷设、维护保养和检测情况是否符合适用的消防技术标准和管理规定。"
       ]
     },
     {
@@ -74,6 +114,16 @@
         "需确认邻近可燃物的高温部位属于灯具表面或其附件的高温部位。",
         "需确认邻近物确属可燃物。",
         "需确认现场未采取符合本条要求的隔热、散热或其他防火保护措施。"
+      ]
+    },
+    {
+      "binding_id": "RB-COMBUSTIBLE-ELECTRICAL-GBT13869-5.1.1-3",
+      "issue_code": "COMBUSTIBLE_NEAR_ELECTRICAL_EQUIPMENT",
+      "clause_id": "GBT13869-5.1.1-3",
+      "priority": 2,
+      "relation": "conditional",
+      "missing_conditions": [
+        "需确认用电产品周边物品是否属于易燃、易爆或腐蚀性物品。"
       ]
     },
     {

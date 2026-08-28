@@ -22,9 +22,6 @@ from fire_safety.schemas import LegalRelation, RiskPriority
 
 LEGAL_DATA_DIR = PROJECT_ROOT / "data" / "legal"
 RISK_PACKS_DIR = LEGAL_DATA_DIR / "risk_packs"
-ISSUE_CODES_PATH = LEGAL_DATA_DIR / "issue_codes.json"
-RULE_BINDINGS_PATH = LEGAL_DATA_DIR / "rule_bindings.json"
-CLAUSES_PATH = LEGAL_DATA_DIR / "clauses.json"
 MANIFEST_FILENAME = "manifest.json"
 ISSUE_CODES_FILENAME = "issue_codes.json"
 RULE_BINDINGS_FILENAME = "rule_bindings.json"
@@ -102,10 +99,10 @@ class RuleCatalog(BaseModel):
         clauses: object,
         *,
         schema_version: str = "1.0",
-        catalog_id: str = "cn-mainland-v1-clauses",
+        catalog_id: str = "three-file-catalog",
         max_visible_clauses_per_finding: int = 3,
     ) -> RuleCatalog:
-        """Build a catalog from the legacy three-file payload shape."""
+        """Build a catalog from the supported three-file payload shape."""
 
         try:
             issue_items = _array_payload(issue_codes, "issue_codes")
@@ -180,32 +177,27 @@ def load_risk_pack_catalog(root: str | Path = RISK_PACKS_DIR) -> RuleCatalog:
 
 
 def load_rule_catalog(
-    issue_codes_path: str | Path = ISSUE_CODES_PATH,
-    bindings_path: str | Path = RULE_BINDINGS_PATH,
-    clauses_path: str | Path = CLAUSES_PATH,
-    *,
-    include_extensions: bool = False,
+    issue_codes_path: str | Path | None = None,
+    bindings_path: str | Path | None = None,
+    clauses_path: str | Path | None = None,
 ) -> RuleCatalog:
-    """Load a legacy three-file catalog; no arguments preserve the v1 base catalog."""
+    """Load enabled Risk Packs, or an explicitly supplied three-file catalog."""
 
-    selected_paths = tuple(
-        Path(path).resolve() for path in (issue_codes_path, bindings_path, clauses_path)
-    )
-    default_paths = tuple(
-        path.resolve() for path in (ISSUE_CODES_PATH, RULE_BINDINGS_PATH, CLAUSES_PATH)
-    )
-    if include_extensions and selected_paths == default_paths:
+    selected_paths = (issue_codes_path, bindings_path, clauses_path)
+    if all(path is None for path in selected_paths):
         return load_risk_pack_catalog()
+    if any(path is None for path in selected_paths):
+        raise RuleDataError("显式加载规则目录时必须同时提供三条 JSON 文件路径")
 
-    issue_payload = _read_json(issue_codes_path, "legacy catalog")
-    binding_payload = _read_json(bindings_path, "legacy catalog")
-    clause_payload = _read_json(clauses_path, "legacy catalog")
+    issue_payload = _read_json(issue_codes_path, "three-file catalog")
+    binding_payload = _read_json(bindings_path, "three-file catalog")
+    clause_payload = _read_json(clauses_path, "three-file catalog")
     return RuleCatalog.from_raw(
         issue_payload,
         binding_payload,
         clause_payload,
         schema_version=_string_field(clause_payload, "schema_version", "1.0"),
-        catalog_id=_string_field(clause_payload, "catalog_id", "cn-mainland-v1-clauses"),
+        catalog_id=_string_field(clause_payload, "catalog_id", "three-file-catalog"),
         max_visible_clauses_per_finding=_int_field(
             binding_payload, "max_visible_clauses_per_finding", 3
         ),
@@ -213,7 +205,7 @@ def load_rule_catalog(
 
 
 def load_issue_code_definitions(path: str | Path) -> tuple[IssueCodeDefinition, ...]:
-    """Validate an explicit legacy Issue Code file for prompt compatibility."""
+    """Validate an explicitly supplied Issue Code file for prompt compatibility."""
 
     try:
         definitions = tuple(
@@ -369,15 +361,12 @@ def _int_field(payload: object, field: str, default: int) -> int:
 
 
 __all__ = [
-    "CLAUSES_PATH",
     "CLAUSES_FILENAME",
     "ISSUE_CODES_FILENAME",
-    "ISSUE_CODES_PATH",
     "LEGAL_DATA_DIR",
     "MANIFEST_FILENAME",
     "RISK_PACKS_DIR",
     "RULE_BINDINGS_FILENAME",
-    "RULE_BINDINGS_PATH",
     "Clause",
     "IssueCodeDefinition",
     "RiskPackManifest",
