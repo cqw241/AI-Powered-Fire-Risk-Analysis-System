@@ -18,12 +18,20 @@ def test_no_argument_loader_maps_to_the_runtime_catalog() -> None:
 def test_runtime_catalog_is_loaded_from_the_enabled_risk_packs() -> None:
     catalog = get_rule_catalog()
 
-    counts = (len(catalog.issue_codes), len(catalog.bindings), len(catalog.clauses))
-    assert catalog.catalog_id == "cn-mainland-electrical-v1+cn-mainland-fire-v1.2"
+    counts = (
+        len(catalog.issue_codes),
+        len(catalog.bindings),
+        len(catalog.penalty_bindings),
+        len(catalog.clauses),
+    )
+    assert catalog.catalog_id == (
+        "cn-mainland-electrical-v1+cn-mainland-fire-v1.2+cn-mainland-penalties-v1"
+    )
     assert counts == (
         33,
         70,
-        39,
+        13,
+        49,
     )
     clause_ids = {item.clause_id for item in catalog.clauses}
     issue_codes = {item.code for item in catalog.issue_codes}
@@ -39,6 +47,7 @@ def test_runtime_catalog_is_loaded_from_the_enabled_risk_packs() -> None:
         "FIRE_FACILITY_MARKING_OBSCURED_OR_DEFECTIVE",
         "ELECTRICAL_WIRING_VISIBLE_DAMAGE",
     } <= issue_codes
+    assert {"XFF-60-1-3", "XFF-61-1", "XFF-63-2", "XFF-66", "GCMJZ-47-7"} <= clause_ids
     assert "GB55024-10.4.1" in clause_ids
     assert "SUSPECTED_COMBUSTIBLE_NEAR_ELECTRICAL_PRODUCT" not in issue_codes
     assert {"GB55024-8.7.6-3", "GB55024-8.7.8-2"} <= {
