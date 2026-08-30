@@ -123,7 +123,10 @@ def test_default_and_explicit_risk_pack_loaders_share_the_catalog_builder(
     risk_packs.load_rule_catalog()
     risk_packs.load_risk_pack_catalog(tmp_path)
 
-    assert calls == ["cn-mainland-electrical-v1+cn-mainland-fire-v1.2", "pack-catalog"]
+    assert calls == [
+        "cn-mainland-electrical-v1+cn-mainland-fire-v1.2+cn-mainland-penalties-v1",
+        "pack-catalog",
+    ]
 
 
 def _write_pack(tmp_path, directory_name, pack_id, code, *, enabled=True):
