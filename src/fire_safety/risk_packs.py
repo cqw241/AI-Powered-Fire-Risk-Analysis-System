@@ -67,6 +67,19 @@ class RuleBinding(BaseModel):
     missing_conditions: list[NonEmptyStr]
 
 
+class PenaltyBinding(BaseModel):
+    """Overlay linking a resolved legal clause to a legal-liability clause."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    binding_id: NonEmptyStr
+    issue_code: NonEmptyStr
+    legal_clause_id: NonEmptyStr
+    penalty_clause_id: NonEmptyStr
+    priority: Annotated[StrictInt, Field(gt=0)]
+    missing_conditions: list[NonEmptyStr]
+
+
 class Clause(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -88,6 +101,7 @@ class RuleCatalog(BaseModel):
     catalog_id: NonEmptyStr
     issue_codes: tuple[IssueCodeDefinition, ...]
     bindings: tuple[RuleBinding, ...]
+    penalty_bindings: tuple[PenaltyBinding, ...] = ()
     clauses: tuple[Clause, ...]
     max_visible_clauses_per_finding: Annotated[StrictInt, Field(gt=0)] = 3
 
@@ -107,12 +121,14 @@ class RuleCatalog(BaseModel):
         try:
             issue_items = _array_payload(issue_codes, "issue_codes")
             binding_items = _array_payload(bindings, "bindings")
+            penalty_binding_items = _optional_array_payload(bindings, "penalty_bindings")
             clause_items = _array_payload(clauses, "clauses")
         except (TypeError, ValueError, KeyError) as exc:
             raise RuleDataError(f"法规规则包结构或引用无效：{exc}") from exc
         return _build_rule_catalog(
             issue_codes=issue_items,
             bindings=binding_items,
+            penalty_bindings=penalty_binding_items,
             clauses=clause_items,
             schema_version=schema_version,
             catalog_id=catalog_id,
@@ -127,6 +143,7 @@ class _LoadedRiskPack(BaseModel):
     manifest: RiskPackManifest
     issue_codes: tuple[IssueCodeDefinition, ...]
     bindings: tuple[RuleBinding, ...]
+    penalty_bindings: tuple[PenaltyBinding, ...]
     clauses: tuple[Clause, ...]
 
 
@@ -161,6 +178,7 @@ def load_risk_pack_catalog(root: str | Path = RISK_PACKS_DIR) -> RuleCatalog:
 
     _validate_pack_item_uniqueness(enabled, "issue_codes", "code")
     _validate_pack_item_uniqueness(enabled, "bindings", "binding_id")
+    _validate_pack_item_uniqueness(enabled, "penalty_bindings", "binding_id")
     _validate_pack_item_uniqueness(enabled, "clauses", "clause_id")
 
     catalog_id = "+".join(pack.manifest.catalog_id for pack in enabled)
@@ -168,6 +186,7 @@ def load_risk_pack_catalog(root: str | Path = RISK_PACKS_DIR) -> RuleCatalog:
     return _build_rule_catalog(
         issue_codes=tuple(item for pack in enabled for item in pack.issue_codes),
         bindings=tuple(item for pack in enabled for item in pack.bindings),
+        penalty_bindings=tuple(item for pack in enabled for item in pack.penalty_bindings),
         clauses=tuple(item for pack in enabled for item in pack.clauses),
         schema_version="1.0",
         catalog_id=catalog_id,
@@ -236,6 +255,7 @@ def _load_manifest(path: Path) -> RiskPackManifest:
 def _load_enabled_pack(directory: Path, manifest: RiskPackManifest) -> _LoadedRiskPack:
     context = f"Risk Pack {manifest.pack_id}"
     try:
+        binding_payload = _read_json(directory / RULE_BINDINGS_FILENAME, context)
         issue_codes = tuple(
             IssueCodeDefinition.model_validate(item)
             for item in _array_payload(
@@ -244,9 +264,11 @@ def _load_enabled_pack(directory: Path, manifest: RiskPackManifest) -> _LoadedRi
         )
         bindings = tuple(
             RuleBinding.model_validate(item)
-            for item in _array_payload(
-                _read_json(directory / RULE_BINDINGS_FILENAME, context), "bindings"
-            )
+            for item in _array_payload(binding_payload, "bindings")
+        )
+        penalty_bindings = tuple(
+            PenaltyBinding.model_validate(item)
+            for item in _optional_array_payload(binding_payload, "penalty_bindings")
         )
         clauses = tuple(
             Clause.model_validate(item)
@@ -256,10 +278,13 @@ def _load_enabled_pack(directory: Path, manifest: RiskPackManifest) -> _LoadedRi
             manifest=manifest,
             issue_codes=issue_codes,
             bindings=bindings,
+            penalty_bindings=penalty_bindings,
             clauses=clauses,
         )
         _validate_unique(pack.issue_codes, "code")
         _validate_unique(pack.bindings, "binding_id")
+        _validate_unique(pack.penalty_bindings, "binding_id")
+        _validate_binding_id_namespace(pack.bindings, pack.penalty_bindings)
         _validate_unique(pack.clauses, "clause_id")
     except (TypeError, ValueError, ValidationError) as exc:
         raise RuleDataError(f"{context} 数据结构无效：{exc}") from exc
@@ -280,10 +305,20 @@ def _array_payload(payload: object, field: str) -> list[object]:
     return payload[field]
 
 
+def _optional_array_payload(payload: object, field: str) -> list[object]:
+    if not isinstance(payload, dict):
+        raise ValueError(f"{field} must be an array when present")
+    value = payload.get(field, [])
+    if not isinstance(value, list):
+        raise ValueError(f"{field} must be an array")
+    return value
+
+
 def _build_rule_catalog(
     *,
     issue_codes: Sequence[object],
     bindings: Sequence[object],
+    penalty_bindings: Sequence[object],
     clauses: Sequence[object],
     schema_version: str,
     catalog_id: str,
@@ -299,6 +334,7 @@ def _build_rule_catalog(
                 "catalog_id": catalog_id,
                 "issue_codes": issue_codes,
                 "bindings": bindings,
+                "penalty_bindings": penalty_bindings,
                 "clauses": clauses,
                 "max_visible_clauses_per_finding": max_visible_clauses_per_finding,
             }
@@ -312,6 +348,8 @@ def _build_rule_catalog(
 def _validate_catalog(catalog: RuleCatalog) -> None:
     _validate_unique(catalog.issue_codes, "code")
     _validate_unique(catalog.bindings, "binding_id")
+    _validate_unique(catalog.penalty_bindings, "binding_id")
+    _validate_binding_id_namespace(catalog.bindings, catalog.penalty_bindings)
     _validate_unique(catalog.clauses, "clause_id")
     for clause in catalog.clauses:
         if clause.clause_id.split("-", 1)[0] != clause.source_code:
@@ -323,6 +361,31 @@ def _validate_catalog(catalog: RuleCatalog) -> None:
             raise ValueError(f"binding references unknown issue code: {binding.issue_code}")
         if binding.clause_id not in clause_set:
             raise ValueError(f"binding references unknown clause: {binding.clause_id}")
+    for binding in catalog.penalty_bindings:
+        if binding.issue_code not in issue_set:
+            raise ValueError(
+                f"penalty binding references unknown issue code: {binding.issue_code}"
+            )
+        if binding.legal_clause_id not in clause_set:
+            raise ValueError(
+                f"penalty binding references unknown legal clause: {binding.legal_clause_id}"
+            )
+        if binding.penalty_clause_id not in clause_set:
+            raise ValueError(
+                f"penalty binding references unknown penalty clause: {binding.penalty_clause_id}"
+            )
+        if binding.legal_clause_id == binding.penalty_clause_id:
+            raise ValueError("penalty binding must point to a distinct penalty clause")
+
+
+def _validate_binding_id_namespace(
+    bindings: Sequence[RuleBinding], penalty_bindings: Sequence[PenaltyBinding]
+) -> None:
+    identifiers = [item.binding_id for item in bindings] + [
+        item.binding_id for item in penalty_bindings
+    ]
+    if len(identifiers) != len(set(identifiers)):
+        raise ValueError("duplicate binding_id across legal and penalty bindings")
 
 
 def _validate_pack_item_uniqueness(
@@ -369,6 +432,7 @@ __all__ = [
     "RULE_BINDINGS_FILENAME",
     "Clause",
     "IssueCodeDefinition",
+    "PenaltyBinding",
     "RiskPackManifest",
     "RuleBinding",
     "RuleCatalog",
