@@ -8,6 +8,7 @@ from typing import Sequence
 from fire_safety.risk_packs import (
     Clause,
     IssueCodeDefinition,
+    PenaltyBinding,
     RuleBinding,
     RuleCatalog,
     RuleDataError,
@@ -17,6 +18,7 @@ from fire_safety.risk_packs import (
 from fire_safety.schemas import (
     LegalAssociation,
     LegalRelation,
+    PenaltyAssociation,
     RiskPriority,
     RuleStatus,
 )
@@ -102,6 +104,10 @@ def _resolve_clauses(
             continue
         seen.add(binding.clause_id)
         clause = clauses[binding.clause_id]
+        penalties, penalty_warnings = _resolve_penalties(
+            valid_codes, clause.clause_id, catalog, clauses
+        )
+        warnings.extend(penalty_warnings)
         results.append(
             LegalAssociation(
                 clause_id=clause.clause_id,
@@ -110,6 +116,7 @@ def _resolve_clauses(
                 clause_text=clause.clause_text,
                 relation=binding.relation,
                 missing_conditions=list(binding.missing_conditions),
+                penalties=list(penalties),
             )
         )
         if len(results) >= catalog.max_visible_clauses_per_finding:
@@ -126,6 +133,57 @@ def _resolve_clauses(
         labels = "、".join(_clause_label(clauses[clause_id]) for clause_id in duplicated)
         warnings.append("多条规则绑定对应相同法规条款：" + labels)
     return valid_codes, tuple(results), warnings
+
+
+def _resolve_penalties(
+    valid_codes: Sequence[str],
+    legal_clause_id: str,
+    catalog: RuleCatalog,
+    clauses: dict[str, Clause],
+) -> tuple[tuple[PenaltyAssociation, ...], list[str]]:
+    """Resolve penalty overlays for one already-selected substantive clause.
+
+    ``PenaltyAssociation.missing_conditions`` contains only conditions that are
+    additional to the parent ``LegalAssociation``. Consumers should read the
+    parent clause conditions and penalty-specific conditions together.
+    """
+
+    overlays = [
+        binding
+        for binding in catalog.penalty_bindings
+        if binding.issue_code in valid_codes and binding.legal_clause_id == legal_clause_id
+    ]
+    overlays.sort(key=lambda item: (item.priority, valid_codes.index(item.issue_code)))
+
+    warnings: list[str] = []
+    penalty_data: dict[str, tuple[Clause, list[str]]] = {}
+    for overlay in overlays:
+        penalty_clause = clauses[overlay.penalty_clause_id]
+        if not penalty_clause.effective:
+            warning = f"处罚条款已失效，未展示：{_clause_label(penalty_clause)}"
+            if warning not in warnings:
+                warnings.append(warning)
+            continue
+
+        conditions = list(dict.fromkeys(overlay.missing_conditions))
+        existing = penalty_data.get(overlay.penalty_clause_id)
+        if existing is None:
+            penalty_data[overlay.penalty_clause_id] = (penalty_clause, conditions)
+            continue
+        merged = list(dict.fromkeys([*existing[1], *conditions]))
+        penalty_data[overlay.penalty_clause_id] = (existing[0], merged)
+
+    penalties = tuple(
+        PenaltyAssociation(
+            clause_id=clause.clause_id,
+            source_name=clause.source_name,
+            clause_number=clause.clause_number,
+            clause_text=clause.clause_text,
+            missing_conditions=conditions,
+        )
+        for clause, conditions in penalty_data.values()
+    )
+    return penalties, warnings
 
 
 def _clause_label(clause: Clause) -> str:
@@ -149,6 +207,7 @@ def recommended_action(issue_codes: Sequence[str], catalog: RuleCatalog) -> str:
 __all__ = [
     "Clause",
     "IssueCodeDefinition",
+    "PenaltyBinding",
     "RuleBinding",
     "RuleCatalog",
     "RuleDataError",
