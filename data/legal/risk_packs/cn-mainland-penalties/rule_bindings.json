@@ -1,0 +1,119 @@
+{
+  "bindings": [],
+  "penalty_bindings": [
+    {
+      "binding_id": "PB-PASSAGE-XFF28-XFF60-1-3",
+      "issue_code": "PASSAGE_OBSTRUCTED",
+      "legal_clause_id": "XFF-28",
+      "penalty_clause_id": "XFF-60-1-3",
+      "priority": 1,
+      "missing_conditions": []
+    },
+    {
+      "binding_id": "PB-EXIT-BLOCK-XFF28-XFF60-1-3",
+      "issue_code": "EXIT_AREA_BLOCKED",
+      "legal_clause_id": "XFF-28",
+      "penalty_clause_id": "XFF-60-1-3",
+      "priority": 1,
+      "missing_conditions": []
+    },
+    {
+      "binding_id": "PB-EXIT-LOCK-XFF28-XFF60-1-3",
+      "issue_code": "EXIT_DOOR_LOCKED_VISIBLE",
+      "legal_clause_id": "XFF-28",
+      "penalty_clause_id": "XFF-60-1-3",
+      "priority": 1,
+      "missing_conditions": []
+    },
+    {
+      "binding_id": "PB-HYDRANT-XFF28-XFF60-1-4",
+      "issue_code": "HYDRANT_OBSTRUCTED",
+      "legal_clause_id": "XFF-28",
+      "penalty_clause_id": "XFF-60-1-4",
+      "priority": 1,
+      "missing_conditions": []
+    },
+    {
+      "binding_id": "PB-FIRE-LANE-XFF28-XFF60-1-5",
+      "issue_code": "FIRE_LANE_OBSTRUCTION_CONCERN",
+      "legal_clause_id": "XFF-28",
+      "penalty_clause_id": "XFF-60-1-5",
+      "priority": 1,
+      "missing_conditions": []
+    },
+    {
+      "binding_id": "PB-ESCAPE-OBSTACLE-XFF28-XFF60-1-6",
+      "issue_code": "ESCAPE_RESCUE_OBSTACLE_PRESENT",
+      "legal_clause_id": "XFF-28",
+      "penalty_clause_id": "XFF-60-1-6",
+      "priority": 1,
+      "missing_conditions": []
+    },
+    {
+      "binding_id": "PB-MIXED-XFF19-1-XFF61-1",
+      "issue_code": "MIXED_USE_SLEEPING_CONCERN",
+      "legal_clause_id": "XFF-19-1",
+      "penalty_clause_id": "XFF-61-1",
+      "priority": 1,
+      "missing_conditions": []
+    },
+    {
+      "binding_id": "PB-MIXED-XFF19-2-XFF61-2",
+      "issue_code": "MIXED_USE_SLEEPING_CONCERN",
+      "legal_clause_id": "XFF-19-2",
+      "penalty_clause_id": "XFF-61-2",
+      "priority": 1,
+      "missing_conditions": [
+        "需确认生产、储存、经营其他物品的场所与居住场所混合设置不符合适用的消防技术标准。"
+      ]
+    },
+    {
+      "binding_id": "PB-OPEN-FLAME-XFF21-1-XFF63-2",
+      "issue_code": "OPEN_FLAME_VISIBLE",
+      "legal_clause_id": "XFF-21-1",
+      "penalty_clause_id": "XFF-63-2",
+      "priority": 1,
+      "missing_conditions": [
+        "需确认现场行为属于违反规定使用明火作业，或者属于在具有火灾、爆炸危险的场所吸烟、使用明火的情形。"
+      ]
+    },
+    {
+      "binding_id": "PB-SMOKING-XFF21-1-XFF63-2",
+      "issue_code": "SMOKING_VISIBLE",
+      "legal_clause_id": "XFF-21-1",
+      "penalty_clause_id": "XFF-63-2",
+      "priority": 1,
+      "missing_conditions": []
+    },
+    {
+      "binding_id": "PB-HAZMAT-XFF23-1-XFF62-1",
+      "issue_code": "HAZARDOUS_MATERIAL_STORAGE_CONCERN",
+      "legal_clause_id": "XFF-23-1",
+      "penalty_clause_id": "XFF-62-1",
+      "priority": 1,
+      "missing_conditions": [
+        "需确认相关生产、储存、运输、销售、使用或者销毁行为违反有关消防技术标准和管理规定。"
+      ]
+    },
+    {
+      "binding_id": "PB-WIRING-XFF27-2-XFF66",
+      "issue_code": "ELECTRICAL_WIRING_VISIBLE_HAZARD",
+      "legal_clause_id": "XFF-27-2",
+      "penalty_clause_id": "XFF-66",
+      "priority": 1,
+      "missing_conditions": [
+        "第六十六条中责令停止使用及并处罚款部分，还需确认已经责令限期改正且逾期不改正。"
+      ]
+    },
+    {
+      "binding_id": "PB-EV-CHARGING-GCMJZ37-1-GCMJZ47-7",
+      "issue_code": "EV_BATTERY_INDOOR_CHARGING_CONCERN",
+      "legal_clause_id": "GCMJZ-37-1",
+      "penalty_clause_id": "GCMJZ-47-7",
+      "priority": 1,
+      "missing_conditions": [
+        "需确认经消防救援机构责令改正后拒不改正。"
+      ]
+    }
+  ]
+}
