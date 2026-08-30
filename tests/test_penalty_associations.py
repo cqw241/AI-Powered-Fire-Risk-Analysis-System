@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import pytest
 
-from fire_safety.penalty_ui import render_result_html
 from fire_safety.rules import load_rule_catalog, resolve_legal_associations
 from fire_safety.schemas import (
     AnalysisEvidence,
@@ -15,6 +14,7 @@ from fire_safety.schemas import (
     RiskPriority,
     RuleStatus,
 )
+from fire_safety.ui import render_result_html
 
 
 @pytest.mark.parametrize(
@@ -69,6 +69,18 @@ def test_penalties_merge_when_multiple_issue_codes_share_one_legal_clause() -> N
     ]
 
 
+def test_shared_penalty_does_not_and_conditions_from_alternative_issue_codes() -> None:
+    catalog = load_rule_catalog()
+
+    associations = resolve_legal_associations(
+        ["SMOKING_VISIBLE", "OPEN_FLAME_VISIBLE"], catalog
+    )
+    legal = next(item for item in associations if item.clause_id == "XFF-21-1")
+    penalty = next(item for item in legal.penalties if item.clause_id == "XFF-63-2")
+
+    assert penalty.missing_conditions == []
+
+
 def test_penalty_specific_conditions_do_not_duplicate_parent_conditions() -> None:
     catalog = load_rule_catalog()
 
@@ -108,6 +120,9 @@ def test_ui_renders_penalty_original_text_and_non_adjudication_notice() -> None:
         missing_conditions=["需确认该区域属于法定疏散通道。"],
         penalties=[penalty],
     )
+    second_legal = legal.model_copy(
+        update={"clause_id": "XFF-19-1", "penalties": [penalty]}
+    )
     finding = AnalysisFinding(
         finding_id="F1",
         title="通道受阻",
@@ -115,7 +130,7 @@ def test_ui_renders_penalty_original_text_and_non_adjudication_notice() -> None:
         risk_priority=RiskPriority.HIGH,
         risk_mechanism="测试",
         evidence=[AnalysisEvidence(text="测试证据", bboxes=[])],
-        legal_associations=[legal],
+        legal_associations=[legal, second_legal],
         limitations=[],
         recommended_action="清理障碍物。",
         rule_status=RuleStatus.MATCHED,
@@ -127,4 +142,4 @@ def test_ui_renders_penalty_original_text_and_non_adjudication_notice() -> None:
 
     assert "相关处罚规定" in rendered
     assert "处罚原文测试文本" in rendered
-    assert "不构成违法认定或处罚决定" in rendered
+    assert rendered.count("不构成违法认定或处罚决定") == 1

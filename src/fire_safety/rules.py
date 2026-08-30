@@ -145,7 +145,10 @@ def _resolve_penalties(
 
     ``PenaltyAssociation.missing_conditions`` contains only conditions that are
     additional to the parent ``LegalAssociation``. Consumers should read the
-    parent clause conditions and penalty-specific conditions together.
+    parent clause conditions and penalty-specific conditions together. When
+    multiple Issue Codes reach the same penalty clause, only conditions shared
+    by every alternative path are retained; alternatives must not become
+    cumulative requirements.
     """
 
     overlays = [
@@ -170,8 +173,8 @@ def _resolve_penalties(
         if existing is None:
             penalty_data[overlay.penalty_clause_id] = (penalty_clause, conditions)
             continue
-        merged = list(dict.fromkeys([*existing[1], *conditions]))
-        penalty_data[overlay.penalty_clause_id] = (existing[0], merged)
+        common_conditions = [item for item in existing[1] if item in conditions]
+        penalty_data[overlay.penalty_clause_id] = (existing[0], common_conditions)
 
     penalties = tuple(
         PenaltyAssociation(

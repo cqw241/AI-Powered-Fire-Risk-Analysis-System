@@ -356,6 +356,9 @@ def _validate_catalog(catalog: RuleCatalog) -> None:
             raise ValueError(f"clause id prefix does not match source_code: {clause.clause_id}")
     issue_set = {item.code for item in catalog.issue_codes}
     clause_set = {item.clause_id for item in catalog.clauses}
+    legal_binding_pairs = {
+        (binding.issue_code, binding.clause_id) for binding in catalog.bindings
+    }
     for binding in catalog.bindings:
         if binding.issue_code not in issue_set:
             raise ValueError(f"binding references unknown issue code: {binding.issue_code}")
@@ -373,6 +376,11 @@ def _validate_catalog(catalog: RuleCatalog) -> None:
         if binding.penalty_clause_id not in clause_set:
             raise ValueError(
                 f"penalty binding references unknown penalty clause: {binding.penalty_clause_id}"
+            )
+        if (binding.issue_code, binding.legal_clause_id) not in legal_binding_pairs:
+            raise ValueError(
+                "penalty binding has no matching legal binding: "
+                f"{binding.issue_code} + {binding.legal_clause_id}"
             )
         if binding.legal_clause_id == binding.penalty_clause_id:
             raise ValueError("penalty binding must point to a distinct penalty clause")
