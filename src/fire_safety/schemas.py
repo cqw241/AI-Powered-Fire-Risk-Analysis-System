@@ -52,6 +52,7 @@ class VisualRegion(VisualModel):
     bbox_1000: NormalizedBBox
     label: NonEmptyStr
 
+
 class Evidence(VisualModel):
     """Visible evidence supporting a finding."""
 
@@ -101,6 +102,16 @@ class LegalRelation(StrEnum):
     CONDITIONAL = "conditional"
 
 
+class PenaltyAssociation(VisualModel):
+    """A verified legal-liability clause linked to a resolved legal clause."""
+
+    clause_id: NonEmptyStr
+    source_name: NonEmptyStr
+    clause_number: NonEmptyStr
+    clause_text: NonEmptyStr
+    missing_conditions: list[NonEmptyStr]
+
+
 class LegalAssociation(VisualModel):
     """A clause deterministically resolved from an Issue Code."""
 
@@ -110,6 +121,7 @@ class LegalAssociation(VisualModel):
     clause_text: NonEmptyStr
     relation: LegalRelation
     missing_conditions: list[NonEmptyStr]
+    penalties: list[PenaltyAssociation] = Field(default_factory=list)
 
 
 class AnalysisEvidence(VisualModel):
@@ -120,7 +132,7 @@ class AnalysisEvidence(VisualModel):
 
 
 class RuleStatus(StrEnum):
-    """Outcome of applying the local rule catalog to a Finding."""
+    """Outcome of applying the local rule catalog to a Finding's Issue Codes."""
 
     MATCHED = "matched"
     NO_VALID_ISSUE_CODE = "no_valid_issue_code"
@@ -208,6 +220,7 @@ __all__ = [
     "LegalAssociation",
     "LegalRelation",
     "NormalizedBBox",
+    "PenaltyAssociation",
     "RiskPriority",
     "RuleStatus",
     "VISUAL_SCHEMA_PATH",
