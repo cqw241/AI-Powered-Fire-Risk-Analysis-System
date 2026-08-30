@@ -60,6 +60,42 @@
         }
       }
     },
+    "penalty_association": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clause_id",
+        "source_name",
+        "clause_number",
+        "clause_text",
+        "missing_conditions"
+      ],
+      "properties": {
+        "clause_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "clause_number": {
+          "type": "string",
+          "minLength": 1
+        },
+        "clause_text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "missing_conditions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
     "legal_association": {
       "type": "object",
       "additionalProperties": false,
@@ -69,7 +105,8 @@
         "clause_number",
         "clause_text",
         "relation",
-        "missing_conditions"
+        "missing_conditions",
+        "penalties"
       ],
       "properties": {
         "clause_id": {
@@ -100,6 +137,12 @@
           "items": {
             "type": "string",
             "minLength": 1
+          }
+        },
+        "penalties": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/penalty_association"
           }
         }
       }
