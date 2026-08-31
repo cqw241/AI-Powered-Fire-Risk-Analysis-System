@@ -1,3 +1,7 @@
+import os
+
+import fire_safety.ui as ui
+from fire_safety.settings import Settings
 from fire_safety.ui import _render_top_banner_html, build_app, render_loading_html
 
 
@@ -5,6 +9,26 @@ def test_f01_builds_gradio_app() -> None:
     app = build_app()
 
     assert app is not None
+
+
+def test_launch_app_adds_localhost_to_proxy_bypass(monkeypatch) -> None:
+    """The Gradio startup self-check must not be sent through a local proxy."""
+
+    monkeypatch.delenv("NO_PROXY", raising=False)
+    monkeypatch.delenv("no_proxy", raising=False)
+
+    class FakeApp:
+        def launch(self, **kwargs):
+            return None
+
+    monkeypatch.setattr(ui, "build_app", lambda settings: FakeApp())
+
+    ui.launch_app(Settings())
+
+    assert "127.0.0.1" in os.environ.get("NO_PROXY", "")
+    assert "localhost" in os.environ.get("NO_PROXY", "")
+    assert "127.0.0.1" in os.environ.get("no_proxy", "")
+    assert "localhost" in os.environ.get("no_proxy", "")
 
 
 def test_loading_state_renders_six_visual_stages() -> None:
