@@ -41,6 +41,48 @@ def valid_response_json() -> str:
 DEFAULT_RESPONSE = object()
 
 
+class FakeStream:
+    def __init__(self, content: Any):
+        self.content = content
+
+    def __aiter__(self):
+        return self._iterate()
+
+    async def _iterate(self):
+        if isinstance(self.content, str):
+            yield SimpleNamespace(
+                choices=[
+                    SimpleNamespace(
+                        delta=SimpleNamespace(
+                            reasoning_content="thinking",
+                            content=None,
+                        )
+                    )
+                ]
+            )
+            yield SimpleNamespace(
+                choices=[
+                    SimpleNamespace(
+                        delta=SimpleNamespace(
+                            reasoning_content=None,
+                            content=self.content,
+                        )
+                    )
+                ]
+            )
+        else:
+            yield SimpleNamespace(
+                choices=[
+                    SimpleNamespace(
+                        delta=SimpleNamespace(
+                            reasoning_content=None,
+                            content=self.content,
+                        )
+                    )
+                ]
+            )
+
+
 class FakeCompletions:
     def __init__(
         self,
@@ -56,9 +98,7 @@ class FakeCompletions:
         self.calls.append(kwargs)
         if self.error is not None:
             raise self.error
-        return SimpleNamespace(
-            choices=[SimpleNamespace(message=SimpleNamespace(content=self.content))]
-        )
+        return FakeStream(self.content)
 
 
 class FakeClient:
@@ -128,6 +168,7 @@ def test_analyze_image_sends_one_strict_structured_request() -> None:
     assert len(completions.calls) == 1
     request = completions.calls[0]
     assert request["model"] == "qwen-test-model"
+    assert request["stream"] is True
     assert request["extra_body"] == {"reasoning_effort": "low"}
     assert request["response_format"] == {
         "type": "json_schema",
