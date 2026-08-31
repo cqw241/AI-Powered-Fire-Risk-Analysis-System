@@ -104,7 +104,7 @@ async def analyze_image(
     settings: Settings | None = None,
     client: AsyncOpenAI | None = None,
 ) -> VisualInvestigation:
-    """Analyze one prepared image using exactly one model completion request."""
+    """Analyze one prepared image using exactly one streamed model request."""
 
     app_settings = settings or get_settings()
     if not app_settings.qwen_configured:
@@ -142,6 +142,7 @@ async def analyze_image(
                 "schema": schema,
             },
         },
+        "stream": True,
     }
     if app_settings.qwen_reasoning_effort is not None:
         # Keep provider extensions in the raw request body. This works with
@@ -152,9 +153,30 @@ async def analyze_image(
         }
 
     request_started_at = perf_counter()
+    first_content_at: float | None = None
+    saw_reasoning_content = False
     request_succeeded = False
+    content_parts: list[str] = []
     try:
-        response = await qwen_client.chat.completions.create(**request_kwargs)
+        response_stream = await qwen_client.chat.completions.create(**request_kwargs)
+        async for chunk in response_stream:
+            choices = getattr(chunk, "choices", None)
+            if not choices:
+                continue
+
+            delta = getattr(choices[0], "delta", None)
+            if delta is None:
+                continue
+
+            reasoning_content = _delta_value(delta, "reasoning_content")
+            if isinstance(reasoning_content, str) and reasoning_content:
+                saw_reasoning_content = True
+
+            content_piece = _delta_value(delta, "content")
+            if isinstance(content_piece, str) and content_piece:
+                if first_content_at is None:
+                    first_content_at = perf_counter()
+                content_parts.append(content_piece)
         request_succeeded = True
     except OpenAIError as exc:
         raise QwenRequestError(
@@ -162,18 +184,32 @@ async def analyze_image(
             reason="request_failed",
         ) from exc
     finally:
-        elapsed_seconds = perf_counter() - request_started_at
+        stream_finished_at = perf_counter()
+        total_seconds = stream_finished_at - request_started_at
         outcome = "completed" if request_succeeded else "failed"
+        if first_content_at is None:
+            phase_metrics = "thinking=n/a output=n/a"
+        else:
+            thinking_seconds = first_content_at - request_started_at
+            output_seconds = stream_finished_at - first_content_at
+            phase_metrics = (
+                f"thinking={thinking_seconds:.3f}s "
+                f"output={output_seconds:.3f}s"
+            )
+        reasoning_source = "reasoning_content" if saw_reasoning_content else "estimated_pre_output"
         print(
             "[LLM timing] "
             f"model={app_settings.qwen_model} "
             f"status={outcome} "
-            f"elapsed={elapsed_seconds:.3f}s "
-            f"({elapsed_seconds * 1000:.1f}ms)",
+            f"{phase_metrics} "
+            f"total={total_seconds:.3f}s "
+            f"thinking_source={reasoning_source}",
             flush=True,
         )
 
-    content = _response_content(response)
+    content = "".join(content_parts)
+    if not content.strip():
+        _missing_response_content()
     try:
         payload = json.loads(content)
     except json.JSONDecodeError as exc:
@@ -200,14 +236,14 @@ def _image_data_url(image: PreparedImage) -> str:
     return f"data:{image.media_type};base64,{payload}"
 
 
-def _response_content(response: Any) -> str:
-    try:
-        content = response.choices[0].message.content
-    except (AttributeError, IndexError, TypeError) as exc:
-        return _missing_response_content(exc)
-    if not isinstance(content, str) or not content.strip():
-        return _missing_response_content()
-    return content
+def _delta_value(delta: Any, field: str) -> Any:
+    value = getattr(delta, field, None)
+    if value is not None:
+        return value
+    model_extra = getattr(delta, "model_extra", None)
+    if isinstance(model_extra, dict):
+        return model_extra.get(field)
+    return None
 
 
 def _missing_response_content(cause: Exception | None = None) -> str:
