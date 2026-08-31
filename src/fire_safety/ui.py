@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import base64
 import html
+import os
 from pathlib import Path
 from typing import Any
 
@@ -868,6 +869,7 @@ def launch_app(settings: Settings | None = None, **launch_kwargs: Any) -> None:
     """Build and launch the Gradio application."""
 
     app_settings = settings or get_settings()
+    _ensure_localhost_proxy_bypass()
     build_app(app_settings).launch(
         server_name=app_settings.host,
         server_port=app_settings.port,
@@ -876,6 +878,24 @@ def launch_app(settings: Settings | None = None, **launch_kwargs: Any) -> None:
         footer_links=[],  # 隐藏 Gradio 底栏:通过 API 使用 / 使用 Gradio 构建 / 设置
         **launch_kwargs,
     )
+
+
+def _ensure_localhost_proxy_bypass() -> None:
+    """Keep Gradio's local startup self-check out of configured proxies."""
+
+    required_hosts = ("127.0.0.1", "localhost")
+    for variable in ("NO_PROXY", "no_proxy"):
+        entries = [
+            entry.strip()
+            for entry in os.environ.get(variable, "").split(",")
+            if entry.strip()
+        ]
+        normalized = {entry.lower() for entry in entries}
+        for host in required_hosts:
+            if host not in normalized:
+                entries.append(host)
+                normalized.add(host)
+        os.environ[variable] = ",".join(entries)
 
 
 __all__ = [
