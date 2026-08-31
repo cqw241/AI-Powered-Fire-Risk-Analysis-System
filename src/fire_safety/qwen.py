@@ -6,6 +6,7 @@ import base64
 import json
 from enum import StrEnum
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 
 from openai import AsyncOpenAI, OpenAIError
@@ -150,13 +151,27 @@ async def analyze_image(
             "reasoning_effort": app_settings.qwen_reasoning_effort,
         }
 
+    request_started_at = perf_counter()
+    request_succeeded = False
     try:
         response = await qwen_client.chat.completions.create(**request_kwargs)
+        request_succeeded = True
     except OpenAIError as exc:
         raise QwenRequestError(
             "Qwen 视觉分析请求失败",
             reason="request_failed",
         ) from exc
+    finally:
+        elapsed_seconds = perf_counter() - request_started_at
+        outcome = "completed" if request_succeeded else "failed"
+        print(
+            "[LLM timing] "
+            f"model={app_settings.qwen_model} "
+            f"status={outcome} "
+            f"elapsed={elapsed_seconds:.3f}s "
+            f"({elapsed_seconds * 1000:.1f}ms)",
+            flush=True,
+        )
 
     content = _response_content(response)
     try:
