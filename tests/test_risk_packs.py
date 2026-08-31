@@ -107,6 +107,39 @@ def test_unknown_cross_pack_reference_is_rejected_after_merge(tmp_path) -> None:
         load_risk_pack_catalog(tmp_path)
 
 
+def test_penalty_binding_requires_matching_legal_binding_pair(tmp_path) -> None:
+    _write_pack(tmp_path, "actual", "actual", "ACTUAL")
+    wrong = _write_pack(tmp_path, "wrong", "wrong", "WRONG")
+    _write_json(
+        wrong / "rule_bindings.json",
+        {
+            "bindings": [_binding("WRONG", "T-WRONG", "RB-WRONG")],
+            "penalty_bindings": [
+                {
+                    "binding_id": "PB-WRONG",
+                    "issue_code": "WRONG",
+                    "legal_clause_id": "T-ACTUAL",
+                    "penalty_clause_id": "P-1",
+                    "priority": 1,
+                    "missing_conditions": [],
+                }
+            ],
+        },
+    )
+    _write_json(
+        wrong / "clauses.json",
+        {
+            "clauses": [
+                _clause("T-WRONG", "T"),
+                _clause("P-1", "P"),
+            ]
+        },
+    )
+
+    with pytest.raises(RuleDataError, match="no matching legal binding"):
+        load_risk_pack_catalog(tmp_path)
+
+
 def test_default_and_explicit_risk_pack_loaders_share_the_catalog_builder(
     tmp_path, monkeypatch
 ) -> None:
@@ -123,7 +156,10 @@ def test_default_and_explicit_risk_pack_loaders_share_the_catalog_builder(
     risk_packs.load_rule_catalog()
     risk_packs.load_risk_pack_catalog(tmp_path)
 
-    assert calls == ["cn-mainland-electrical-v1+cn-mainland-fire-v1.2", "pack-catalog"]
+    assert calls == [
+        "cn-mainland-electrical-v1+cn-mainland-fire-v1.2+cn-mainland-penalties-v1",
+        "pack-catalog",
+    ]
 
 
 def _write_pack(tmp_path, directory_name, pack_id, code, *, enabled=True):
@@ -188,6 +224,20 @@ def _binding(issue_code, clause_id, binding_id):
         "priority": 1,
         "relation": "direct",
         "missing_conditions": [],
+    }
+
+
+def _clause(clause_id, source_code):
+    return {
+        "clause_id": clause_id,
+        "source_name": "Test source",
+        "source_code": source_code,
+        "clause_number": "1",
+        "clause_text": f"Clause for {clause_id}",
+        "effective": True,
+        "verified_at": "2026-08-27",
+        "verification_source": "test",
+        "engineering_note": "test",
     }
 
 

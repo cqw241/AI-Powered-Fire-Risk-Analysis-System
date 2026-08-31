@@ -25,6 +25,7 @@ from fire_safety.schemas import (
     AnalysisStatus,
     LegalAssociation,
     LegalRelation,
+    PenaltyAssociation,
 )
 from fire_safety.settings import Settings, get_settings
 
@@ -613,7 +614,21 @@ def _render_completed_html(result: AnalysisResult) -> str:
         "</div>"
     )
     findings = "".join(_render_finding_html(finding) for finding in result.findings)
-    return f'<div class="frs">{banner}{findings}</div>'
+    penalty_notice = (
+        '<div class="banner banner-info" role="note">'
+        '<p class="banner-note">'
+        "仅作相关法律责任条款展示，不构成违法认定或处罚决定；"
+        "是否满足处罚条件及具体行政处理，由有权机关结合现场事实依法认定。"
+        "</p>"
+        "</div>"
+        if any(
+            law.penalties
+            for finding in result.findings
+            for law in finding.legal_associations
+        )
+        else ""
+    )
+    return f'<div class="frs">{banner}{penalty_notice}{findings}</div>'
 
 
 def _render_status_html(result: AnalysisResult) -> str:
@@ -692,7 +707,7 @@ def _render_clause_html(law: LegalAssociation) -> str:
         rel_class, rel_text = "rel-conditional", "条件相关"
     missing = "".join(f"<li>{_esc(item)}</li>" for item in law.missing_conditions)
     missing_ul = f'<ul class="missing-cond">{missing}</ul>' if missing else ""
-    return (
+    legal_html = (
         '<details class="clause">'
         "<summary>"
         f'<span class="clause-cite">《{_esc(law.source_name)}》 {_esc(law.clause_number)}</span>'
@@ -702,6 +717,39 @@ def _render_clause_html(law: LegalAssociation) -> str:
         f'<p class="clause-text">{_esc(law.clause_text)}</p>'
         "</details>"
         f"{missing_ul}"
+    )
+    if not law.penalties:
+        return legal_html
+    penalties = "".join(_render_penalty_html(item) for item in law.penalties)
+    return (
+        f"{legal_html}"
+        '<div class="sec">'
+        '<span class="sec-label">相关处罚规定</span>'
+        f"{penalties}"
+        "</div>"
+    )
+
+
+def _render_penalty_html(penalty: PenaltyAssociation) -> str:
+    conditions = "".join(f"<li>{_esc(item)}</li>" for item in penalty.missing_conditions)
+    conditions_html = (
+        '<ul class="missing-cond">'
+        "<li><strong>处罚适用还需确认：</strong></li>"
+        f"{conditions}"
+        "</ul>"
+        if conditions
+        else ""
+    )
+    return (
+        '<details class="clause">'
+        "<summary>"
+        f'<span class="clause-cite">《{_esc(penalty.source_name)}》 '
+        f'{_esc(penalty.clause_number)}</span>'
+        f'<code class="clause-id">{_esc(penalty.clause_id)}</code>'
+        "</summary>"
+        f'<p class="clause-text">{_esc(penalty.clause_text)}</p>'
+        "</details>"
+        f"{conditions_html}"
     )
 
 

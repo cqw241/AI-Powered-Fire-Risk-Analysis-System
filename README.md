@@ -130,10 +130,11 @@ Binding ID 或 Clause ID 重复时拒绝加载，不进行覆盖。新增领域�
 manifest 驱动的运行时 Catalog；显式同时传入三条 JSON 文件路径时，可加载测试或外部提供的独立
 Catalog。`data/legal` 顶层不再保留旧版三文件，规则数据只在各 Risk Pack 中维护。
 
-当前启用两个规则包：
+当前启用三个规则包：
 
 - `cn-mainland-fire-safety`：消防通道、消防设施、明火和场所使用等消防安全规则；
 - `cn-mainland-electrical-safety`：线路、配电设施、用电环境和电动自行车充电等电气安全规则。
+- `cn-mainland-penalties`：以 Issue Code 与已命中的实体条款为键，补充国家级相关处罚规定。
 
 电气线路敷设及用电产品周边危险物品规则归 electrical pack 所有，避免同一视觉风险在两个包中
 出现语义重叠的 Issue Code。
@@ -191,10 +192,10 @@ bbox 使用 0-1000 归一化坐标：
 | F05 | 已完成 | Pipeline、AnalysisResult 和最终 Gradio 展示 |
 | F06 | 进行中 | 自动化测试已完成；待补充五类真实图片端到端验收记录 |
 
-当前启用规则包包含 33 个 Issue Code、39 条法规条款和 70 条规则绑定。测试与静态检查结果：
+当前启用规则包包含 33 个 Issue Code、49 条法规条款、70 条实体规则绑定和 13 条处罚绑定。测试与静态检查结果：
 
 ```text
-117 passed
+136 passed
 ruff check . → All checks passed
 ```
 
