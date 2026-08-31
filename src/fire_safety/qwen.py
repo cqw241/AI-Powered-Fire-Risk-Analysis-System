@@ -152,9 +152,14 @@ async def analyze_image(
             "reasoning_effort": app_settings.qwen_reasoning_effort,
         }
 
-    request_started_at = perf_counter()
-    first_content_at: float | None = None
-    saw_reasoning_content = False
+    # Wall-clock phase boundaries measured at the client:
+    # T0 = request start
+    # T1 = first reasoning_content chunk received
+    # T2 = first final content chunk received
+    # T3 = response stream finished
+    request_started_at = perf_counter()  # T0
+    first_reasoning_at: float | None = None  # T1
+    first_content_at: float | None = None  # T2
     request_succeeded = False
     content_parts: list[str] = []
     try:
@@ -169,14 +174,20 @@ async def analyze_image(
                 continue
 
             reasoning_content = _delta_value(delta, "reasoning_content")
-            if isinstance(reasoning_content, str) and reasoning_content:
-                saw_reasoning_content = True
-
             content_piece = _delta_value(delta, "content")
-            if isinstance(content_piece, str) and content_piece:
-                if first_content_at is None:
-                    first_content_at = perf_counter()
-                content_parts.append(content_piece)
+            has_reasoning = isinstance(reasoning_content, str) and bool(reasoning_content)
+            has_content = isinstance(content_piece, str) and bool(content_piece)
+
+            # Capture one receive timestamp per meaningful chunk. If reasoning
+            # and final content begin in the same chunk, T1 and T2 are equal.
+            if has_reasoning or has_content:
+                chunk_received_at = perf_counter()
+                if has_reasoning and first_reasoning_at is None:
+                    first_reasoning_at = chunk_received_at
+                if has_content:
+                    if first_content_at is None:
+                        first_content_at = chunk_received_at
+                    content_parts.append(content_piece)
         request_succeeded = True
     except OpenAIError as exc:
         raise QwenRequestError(
@@ -184,26 +195,21 @@ async def analyze_image(
             reason="request_failed",
         ) from exc
     finally:
-        stream_finished_at = perf_counter()
+        stream_finished_at = perf_counter()  # T3
         total_seconds = stream_finished_at - request_started_at
         outcome = "completed" if request_succeeded else "failed"
-        if first_content_at is None:
-            phase_metrics = "thinking=n/a output=n/a"
-        else:
-            thinking_seconds = first_content_at - request_started_at
-            output_seconds = stream_finished_at - first_content_at
-            phase_metrics = (
-                f"thinking={thinking_seconds:.3f}s "
-                f"output={output_seconds:.3f}s"
-            )
-        reasoning_source = "reasoning_content" if saw_reasoning_content else "estimated_pre_output"
+        timing_metrics = _format_timing_metrics(
+            request_started_at=request_started_at,
+            first_reasoning_at=first_reasoning_at,
+            first_content_at=first_content_at,
+            stream_finished_at=stream_finished_at,
+        )
         print(
             "[LLM timing] "
             f"model={app_settings.qwen_model} "
             f"status={outcome} "
-            f"{phase_metrics} "
-            f"total={total_seconds:.3f}s "
-            f"thinking_source={reasoning_source}",
+            f"{timing_metrics} "
+            f"total={total_seconds:.3f}s",
             flush=True,
         )
 
@@ -244,6 +250,38 @@ def _delta_value(delta: Any, field: str) -> Any:
     if isinstance(model_extra, dict):
         return model_extra.get(field)
     return None
+
+
+def _format_timing_metrics(
+    *,
+    request_started_at: float,
+    first_reasoning_at: float | None,
+    first_content_at: float | None,
+    stream_finished_at: float,
+) -> str:
+    """Format T0→T1, T1→T2, and T2→T3 wall-clock durations."""
+
+    if first_reasoning_at is None:
+        to_reasoning = "n/a"
+        reasoning = "n/a"
+    else:
+        to_reasoning = f"{first_reasoning_at - request_started_at:.3f}s"
+        reasoning = (
+            f"{first_content_at - first_reasoning_at:.3f}s"
+            if first_content_at is not None
+            else "n/a"
+        )
+
+    output = (
+        f"{stream_finished_at - first_content_at:.3f}s"
+        if first_content_at is not None
+        else "n/a"
+    )
+    return (
+        f"t0_to_t1={to_reasoning} "
+        f"t1_to_t2={reasoning} "
+        f"t2_to_t3={output}"
+    )
 
 
 def _missing_response_content(cause: Exception | None = None) -> str:
