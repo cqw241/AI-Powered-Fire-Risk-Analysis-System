@@ -14,6 +14,7 @@ from openai import APIConnectionError, AsyncOpenAI
 from PIL import Image
 from pydantic import ValidationError
 
+import fire_safety.qwen as qwen_module
 from fire_safety.image import PreparedImage, prepare_image
 from fire_safety.qwen import (
     InvalidModelOutputError,
@@ -183,6 +184,19 @@ def test_analyze_image_sends_one_strict_structured_request() -> None:
     prefix, encoded = image_url.split(",", maxsplit=1)
     assert prefix == "data:image/png;base64"
     assert base64.b64decode(encoded) == image.qwen_bytes
+
+
+def test_timing_logs_t0_t1_t2_t3_phases(monkeypatch, capsys) -> None:
+    times = iter([100.0, 101.5, 104.0, 106.0])
+    monkeypatch.setattr(qwen_module, "perf_counter", lambda: next(times))
+
+    run_analysis(FakeCompletions())
+
+    captured = capsys.readouterr().out
+    assert "t0_to_t1=1.500s" in captured
+    assert "t1_to_t2=2.500s" in captured
+    assert "t2_to_t3=2.000s" in captured
+    assert "total=6.000s" in captured
 
 
 def test_reasoning_effort_is_omitted_when_unset() -> None:
