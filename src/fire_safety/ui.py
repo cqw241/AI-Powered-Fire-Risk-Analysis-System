@@ -9,10 +9,8 @@ reorders findings, or re-runs rule logic. Design decisions are recorded in
 
 from __future__ import annotations
 
-import base64
 import html
 import os
-from pathlib import Path
 from typing import Any
 
 import gradio as gr
@@ -38,7 +36,6 @@ _FONT_STACK = (
     '"Source Han Sans SC", "Noto Sans SC", "Helvetica Neue", Arial, sans-serif'
 )
 _FONT_MONO = 'ui-monospace, "SF Mono", Menlo, Consolas, "Sarasa Mono SC", monospace'
-_TOP_BANNER_PATH = Path(__file__).resolve().parent / "assets" / "top_banner.png"
 
 _THEME = gr.themes.Base(
     primary_hue="orange",
@@ -59,25 +56,6 @@ _STATUS_META: dict[AnalysisStatus, tuple[str, str]] = {
     AnalysisStatus.MODEL_FAILED: ("模型分析失败", "请稍后重试；若持续失败，请检查模型配置。"),
     AnalysisStatus.INVALID_MODEL_OUTPUT: ("模型输出无效", "建议更换更清晰的图片后重试。"),
 }
-
-
-def _render_top_banner_html(path: str | Path = _TOP_BANNER_PATH) -> str:
-    """Render the supplied branding banner as a self-contained responsive image."""
-
-    banner_path = Path(path)
-    try:
-        encoded = base64.b64encode(banner_path.read_bytes()).decode("ascii")
-    except OSError:
-        return ""
-    return (
-        '<div class="frs-top-banner">'
-        f'<img src="data:image/png;base64,{encoded}" '
-        'alt="佛山市消防救援局，对党忠诚、纪律严明，赴汤蹈火、竭诚为民" />'
-        "</div>"
-    )
-
-
-_TOP_BANNER_HTML = _render_top_banner_html()
 
 _START_SCAN_JS = """() => {
   const sourceImage = document.getElementById("source_image");
@@ -161,37 +139,6 @@ _CSS = (
 }
 @media (prefers-reduced-motion: reduce) {
   #source_image.frs-scanning .image-container::after { animation: none; }
-}
-
-/* top_banner 的 elem 落在 Gradio `.block` 上。实测 (Gradio 6.22):
-   `.main` 有 padding 16px 32px 且可能居中, 故用 100vw + calc(50% - 50vw)
-   抵消左右缩进, margin-top: -16px 抵消顶部 padding, 实现真正全宽贴边;
-   `.html-container` 默认 padding "10px 12px", 是横幅四周 12px 白边的来源。
-   `.gradio-container` overflow: hidden, 横幅恰在 0..viewport 内, 无溢出问题。 */
-#top_banner {
-  width: 100vw;
-  max-width: none;
-  margin: -16px calc(50% - 50vw) 22px;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  overflow: hidden;
-  background: #fff;
-}
-#top_banner .html-container { padding: 0; }
-#top_banner .frs-top-banner {
-  width: 100%;
-  height: clamp(112px, 16.67vw, 240px);
-  overflow: hidden;
-  border-radius: 0;
-  background: #fff;
-}
-#top_banner .frs-top-banner img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center 47%;
 }
 
 .frs .banner {
@@ -803,7 +750,6 @@ def build_app(settings: Settings | None = None) -> gr.Blocks:
         analytics_enabled=False,
         title="消防风险分析系统",
     ) as app:
-        gr.HTML(_TOP_BANNER_HTML, elem_id="top_banner")
         gr.Markdown("# **智消慧检**\n\n基于多模态人工智能的消防安全风险智能识别与辅助研判系统")
         gr.Markdown(f"分析模型：{app_settings.qwen_model}")
 
