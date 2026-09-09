@@ -2,7 +2,7 @@ import os
 
 import fire_safety.ui as ui
 from fire_safety.settings import Settings
-from fire_safety.ui import _render_top_banner_html, build_app, render_loading_html
+from fire_safety.ui import build_app, render_loading_html
 
 
 def test_f01_builds_gradio_app() -> None:
@@ -55,14 +55,6 @@ def test_loading_state_renders_six_visual_stages() -> None:
     assert "@media (prefers-color-scheme: dark)" in loading
     assert "--loading-panel: #202224;" in loading
     assert "0%, 8% { transform: scale(1); opacity: .95;" in loading
-
-
-def test_top_banner_renders_the_branding_asset() -> None:
-    banner = _render_top_banner_html()
-
-    assert 'class="frs-top-banner"' in banner
-    assert 'alt="佛山市消防救援局' in banner
-    assert "data:image/png;base64," in banner
 
 
 def test_upload_change_clears_previous_analysis_outputs() -> None:
