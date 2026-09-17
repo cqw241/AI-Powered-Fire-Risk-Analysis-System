@@ -129,7 +129,11 @@ async def analyze_image(
                 "role": "user",
                 "content": [
                     {"type": "text", "text": "请分析这张消防场景图片。"},
-                    {"type": "image_url", "image_url": {"url": data_url}},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": data_url},
+                        "max_pixels": app_settings.qwen_max_pixels,
+                    },
                 ],
             },
         ],
