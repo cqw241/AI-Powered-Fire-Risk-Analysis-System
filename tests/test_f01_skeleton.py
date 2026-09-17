@@ -61,7 +61,7 @@ def test_top_banner_renders_the_branding_asset() -> None:
     banner = _render_top_banner_html()
 
     assert 'class="frs-top-banner"' in banner
-    assert 'alt="佛山市消防救援局' in banner
+    assert 'alt="广州大学智慧消防大模型：多模态感知、风险识别、法规关联、辅助研判"' in banner
     assert "data:image/png;base64," in banner
 
 

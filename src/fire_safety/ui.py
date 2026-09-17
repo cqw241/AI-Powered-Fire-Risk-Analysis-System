@@ -72,7 +72,7 @@ def _render_top_banner_html(path: str | Path = _TOP_BANNER_PATH) -> str:
     return (
         '<div class="frs-top-banner">'
         f'<img src="data:image/png;base64,{encoded}" '
-        'alt="佛山市消防救援局，对党忠诚、纪律严明，赴汤蹈火、竭诚为民" />'
+        'alt="广州大学智慧消防大模型：多模态感知、风险识别、法规关联、辅助研判" />'
         "</div>"
     )
 
