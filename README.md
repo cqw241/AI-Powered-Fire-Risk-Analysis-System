@@ -50,11 +50,16 @@ dev = ["pytest>=8,<9", "ruff>=0.8,<1", "jsonschema>=4,<5"]
 QWEN_BASE_URL=
 QWEN_API_KEY=
 QWEN_MODEL=Qwen3.8-27B
+QWEN_PROVIDER=dashscope
+# Qwen3.8-27B 图片像素上限：65536–16777216；默认 8388608
+QWEN_MAX_PIXELS=8388608
 # 可选：low / medium / xhigh；未配置时不向模型服务发送 reasoning_effort
 # QWEN_REASONING_EFFORT=low
 ```
 
-可复制 `.env.example` 为 `.env` 后填写配置。真实密钥不会提交到仓库。`QWEN_REASONING_EFFORT` 为可选项；默认不配置时保持模型服务原有默认推理行为。
+可复制 `.env.example` 为 `.env` 后填写配置。真实密钥不会提交到仓库。
+`QWEN_PROVIDER` 可选 `dashscope` 或 `vllm`：前者把 `max_pixels` 放入图片内容项，后者通过
+`mm_processor_kwargs` 传给视觉处理器。`QWEN_REASONING_EFFORT` 为可选项；默认不配置时保持模型服务原有默认推理行为。
 
 安装和运行：
 
@@ -195,7 +200,7 @@ bbox 使用 0-1000 归一化坐标：
 当前启用规则包包含 33 个 Issue Code、49 条法规条款、70 条实体规则绑定和 13 条处罚绑定。测试与静态检查结果：
 
 ```text
-136 passed
+145 passed
 ruff check . → All checks passed
 ```
 

@@ -120,6 +120,17 @@ async def analyze_image(
     prompt = build_visual_prompt()
     schema = load_visual_investigation_schema()
     data_url = _image_data_url(image)
+    image_content: dict[str, Any] = {
+        "type": "image_url",
+        "image_url": {"url": data_url},
+    }
+    extra_body: dict[str, Any] = {}
+    if app_settings.qwen_provider == "dashscope":
+        image_content["max_pixels"] = app_settings.qwen_max_pixels
+    else:
+        extra_body["mm_processor_kwargs"] = {
+            "max_pixels": app_settings.qwen_max_pixels,
+        }
 
     request_kwargs: dict[str, Any] = {
         "model": app_settings.qwen_model,
@@ -129,11 +140,7 @@ async def analyze_image(
                 "role": "user",
                 "content": [
                     {"type": "text", "text": "请分析这张消防场景图片。"},
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": data_url},
-                        "max_pixels": app_settings.qwen_max_pixels,
-                    },
+                    image_content,
                 ],
             },
         ],
@@ -147,12 +154,9 @@ async def analyze_image(
         },
     }
     if app_settings.qwen_reasoning_effort is not None:
-        # Keep provider extensions in the raw request body. This works with
-        # DashScope today and avoids coupling this client to a provider-
-        # specific SDK when moving to a compatible self-hosted vLLM endpoint.
-        request_kwargs["extra_body"] = {
-            "reasoning_effort": app_settings.qwen_reasoning_effort,
-        }
+        extra_body["reasoning_effort"] = app_settings.qwen_reasoning_effort
+    if extra_body:
+        request_kwargs["extra_body"] = extra_body
 
     try:
         response = await qwen_client.chat.completions.create(**request_kwargs)
