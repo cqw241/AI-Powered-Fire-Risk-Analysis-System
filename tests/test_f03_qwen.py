@@ -71,6 +71,7 @@ def configured_settings() -> Settings:
         qwen_base_url="https://qwen.example/v1",
         qwen_api_key="test-key",
         qwen_model="qwen-test-model",
+        qwen_max_pixels=4_194_304,
         qwen_reasoning_effort="low",
     )
 
@@ -138,7 +139,9 @@ def test_analyze_image_sends_one_strict_structured_request() -> None:
         },
     }
     assert request["messages"][0]["role"] == "system"
-    image_url = request["messages"][1]["content"][1]["image_url"]["url"]
+    image_content = request["messages"][1]["content"][1]
+    assert image_content["max_pixels"] == 4_194_304
+    image_url = image_content["image_url"]["url"]
     prefix, encoded = image_url.split(",", maxsplit=1)
     assert prefix == "data:image/png;base64"
     assert base64.b64decode(encoded) == image.qwen_bytes
@@ -161,6 +164,11 @@ def test_reasoning_effort_is_omitted_when_unset() -> None:
 def test_invalid_reasoning_effort_is_rejected() -> None:
     with pytest.raises(ValidationError):
         Settings(qwen_reasoning_effort="extreme", _env_file=None)
+
+
+def test_non_positive_qwen_max_pixels_is_rejected() -> None:
+    with pytest.raises(ValidationError):
+        Settings(qwen_max_pixels=0, _env_file=None)
 
 
 def test_missing_configuration_fails_before_request() -> None:
