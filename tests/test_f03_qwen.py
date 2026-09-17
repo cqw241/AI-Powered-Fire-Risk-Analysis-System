@@ -71,6 +71,8 @@ def configured_settings() -> Settings:
         qwen_base_url="https://qwen.example/v1",
         qwen_api_key="test-key",
         qwen_model="qwen-test-model",
+        qwen_provider="dashscope",
+        qwen_max_pixels=4_194_304,
         qwen_reasoning_effort="low",
     )
 
@@ -138,13 +140,15 @@ def test_analyze_image_sends_one_strict_structured_request() -> None:
         },
     }
     assert request["messages"][0]["role"] == "system"
-    image_url = request["messages"][1]["content"][1]["image_url"]["url"]
+    image_content = request["messages"][1]["content"][1]
+    assert image_content["max_pixels"] == 4_194_304
+    image_url = image_content["image_url"]["url"]
     prefix, encoded = image_url.split(",", maxsplit=1)
     assert prefix == "data:image/png;base64"
     assert base64.b64decode(encoded) == image.qwen_bytes
 
 
-def test_reasoning_effort_is_omitted_when_unset() -> None:
+def test_default_dashscope_request_sends_default_pixels_without_reasoning() -> None:
     completions = FakeCompletions()
     settings = Settings(
         qwen_base_url="https://qwen.example/v1",
@@ -156,11 +160,51 @@ def test_reasoning_effort_is_omitted_when_unset() -> None:
     run_analysis(completions, settings=settings)
 
     assert "extra_body" not in completions.calls[0]
+    image_content = completions.calls[0]["messages"][1]["content"][1]
+    assert image_content["max_pixels"] == 8_388_608
 
 
 def test_invalid_reasoning_effort_is_rejected() -> None:
     with pytest.raises(ValidationError):
         Settings(qwen_reasoning_effort="extreme", _env_file=None)
+
+
+def test_invalid_qwen_provider_is_rejected() -> None:
+    with pytest.raises(ValidationError):
+        Settings(qwen_provider="other", _env_file=None)
+
+
+@pytest.mark.parametrize("max_pixels", [-1, 0, 65_535, 16_777_217])
+def test_out_of_range_qwen_max_pixels_is_rejected(max_pixels: int) -> None:
+    with pytest.raises(ValidationError):
+        Settings(qwen_max_pixels=max_pixels, _env_file=None)
+
+
+@pytest.mark.parametrize("max_pixels", [65_536, 16_777_216])
+def test_qwen_max_pixels_accepts_documented_boundaries(max_pixels: int) -> None:
+    assert Settings(qwen_max_pixels=max_pixels, _env_file=None).qwen_max_pixels == max_pixels
+
+
+def test_vllm_sends_max_pixels_as_processor_kwargs() -> None:
+    completions = FakeCompletions()
+    settings = Settings(
+        qwen_base_url="https://qwen.example/v1",
+        qwen_api_key="test-key",
+        qwen_model="qwen-test-model",
+        qwen_provider="vllm",
+        qwen_max_pixels=4_194_304,
+        qwen_reasoning_effort="low",
+        _env_file=None,
+    )
+
+    run_analysis(completions, settings=settings)
+
+    request = completions.calls[0]
+    assert request["extra_body"] == {
+        "mm_processor_kwargs": {"max_pixels": 4_194_304},
+        "reasoning_effort": "low",
+    }
+    assert "max_pixels" not in request["messages"][1]["content"][1]
 
 
 def test_missing_configuration_fails_before_request() -> None:

@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     qwen_base_url: str | None = None
     qwen_api_key: SecretStr | None = None
     qwen_model: str = "Qwen3.8-27B"
+    qwen_provider: Literal["dashscope", "vllm"] = "dashscope"
+    qwen_max_pixels: int = Field(default=8_388_608, ge=65_536, le=16_777_216)
     qwen_reasoning_effort: Literal["low", "medium", "xhigh"] | None = None
 
     max_image_bytes: int = Field(default=10 * 1024 * 1024, gt=0)
