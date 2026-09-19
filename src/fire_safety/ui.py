@@ -181,7 +181,6 @@ _CSS = (
 #top_banner .html-container { padding: 0; }
 #top_banner .frs-top-banner {
   width: 100%;
-  height: clamp(112px, 16.67vw, 240px);
   overflow: hidden;
   border-radius: 0;
   background: #fff;
@@ -189,9 +188,10 @@ _CSS = (
 #top_banner .frs-top-banner img {
   display: block;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center 47%;
+  height: auto;
+  max-height: none;
+  object-fit: contain;
+  object-position: center;
 }
 
 .frs .banner {
