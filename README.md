@@ -55,11 +55,14 @@ QWEN_PROVIDER=dashscope
 QWEN_MAX_PIXELS=8388608
 # 可选：low / medium / xhigh；未配置时不向模型服务发送 reasoning_effort
 # QWEN_REASONING_EFFORT=low
+# 可选；默认写入项目根目录 model_calls.jsonl
+# CALL_LOG_PATH=model_calls.jsonl
 ```
 
 可复制 `.env.example` 为 `.env` 后填写配置。真实密钥不会提交到仓库。
-`QWEN_PROVIDER` 可选 `dashscope` 或 `vllm`：前者把 `max_pixels` 放入图片内容项，后者通过
-`mm_processor_kwargs` 传给视觉处理器。`QWEN_REASONING_EFFORT` 为可选项；默认不配置时保持模型服务原有默认推理行为。
+`QWEN_PROVIDER` 可选 `dashscope`、`llamacpp` 或 `vllm`：DashScope 把 `max_pixels` 放入图片内容项，
+vLLM 通过 `mm_processor_kwargs` 传给视觉处理器，llama.cpp 的图片 token 上限由服务端启动参数控制。
+`QWEN_REASONING_EFFORT` 为可选项；默认不配置时保持模型服务原有默认推理行为。
 
 安装和运行：
 
@@ -91,7 +94,9 @@ Gradio 上传图片
 ## 耗时分段
 
 每次点击「开始分析」都会记录一段耗时：结果区底部有一个默认折叠的「本次耗时」面板，终端同时
-打印一行 `[耗时] status=... total=... <阶段>=...s`。两者来自同一次测量。
+打印一行 `[耗时] method=... model=... status=... total=... <阶段>=...s`。两者来自同一次测量。
+项目根目录的 `model_calls.jsonl` 还会追加一条结构化记录，包含调用时间、调用方式、模型名、状态、
+三个阶段耗时、TTFB/TTFT 和 token 统计；成功与各类失败都会记录。该运行日志已加入 `.gitignore`。
 
 面板和日志固定显示三段：
 
@@ -116,7 +121,7 @@ Gradio 上传图片
 实测（`data/images/route_blocked.png`，1448×1086）：
 
 ```text
-[耗时] status=completed total=59.089s 图片预处理=0.429s 模型请求=58.651s 后续处理=0.007s
+[耗时] method=Llama.cpp model=Qwen3.8-27B status=completed total=59.089s 图片预处理=0.429s 模型请求=58.651s 后续处理=0.007s
        ttfb=3.984s ttft=31.627s prompt_tokens=4250 completion_tokens=2925 reasoning_tokens=1394
 ```
 

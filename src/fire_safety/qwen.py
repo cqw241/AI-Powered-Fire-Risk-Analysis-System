@@ -135,7 +135,7 @@ async def analyze_image(
     extra_body: dict[str, Any] = {}
     if app_settings.qwen_provider == "dashscope":
         image_content["max_pixels"] = app_settings.qwen_max_pixels
-    else:
+    elif app_settings.qwen_provider == "vllm":
         extra_body["mm_processor_kwargs"] = {
             "max_pixels": app_settings.qwen_max_pixels,
         }

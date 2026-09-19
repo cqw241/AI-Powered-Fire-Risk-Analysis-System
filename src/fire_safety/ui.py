@@ -19,6 +19,7 @@ from typing import Any
 import gradio as gr
 from PIL import Image
 
+from fire_safety.call_log import append_call_record
 from fire_safety.image import ImageProcessingError, PreparedImage, draw_bboxes, prepare_image
 from fire_safety.pipeline import analyze
 from fire_safety.schemas import (
@@ -901,10 +902,23 @@ def _annotated_for_result(prepared: PreparedImage, result: AnalysisResult) -> Im
     return draw_bboxes(prepared, bboxes)
 
 
-def _log_timing(status: AnalysisStatus, timing: TimingReport) -> None:
+def _log_timing(
+    status: AnalysisStatus, timing: TimingReport, settings: Settings
+) -> None:
     """Emit one grep-able latency line per click for offline comparison."""
 
-    logger.info("[耗时] status=%s %s", status.value, timing.summary())
+    method = {
+        "llamacpp": "Llama.cpp",
+        "dashscope": "阿里云百炼",
+        "vllm": "vLLM",
+    }[settings.qwen_provider]
+    logger.info(
+        "[耗时] method=%s model=%s status=%s %s",
+        method,
+        settings.qwen_model,
+        status.value,
+        timing.summary(),
+    )
 
 
 async def _run_analysis_event(
@@ -948,7 +962,11 @@ async def _run_analysis_event(
             result_html = render_result_html(result)
 
     timing = recorder.snapshot()
-    _log_timing(result.status, timing)
+    _log_timing(result.status, timing, app_settings)
+    try:
+        append_call_record(status=result.status.value, timing=timing, settings=app_settings)
+    except OSError:
+        logger.exception("调用记录写入失败：%s", app_settings.call_log_path)
     return annotated, result_html + render_timing_html(timing)
 
 

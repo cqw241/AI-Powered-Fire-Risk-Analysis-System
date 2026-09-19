@@ -237,6 +237,25 @@ def test_vllm_sends_max_pixels_as_processor_kwargs() -> None:
     assert "max_pixels" not in request["messages"][1]["content"][1]
 
 
+def test_llamacpp_omits_unsupported_pixel_fields() -> None:
+    completions = FakeCompletions()
+    settings = Settings(
+        qwen_base_url="http://127.0.0.1:8092/v1",
+        qwen_api_key="local",
+        qwen_model="Qwen3.8-27B",
+        qwen_provider="llamacpp",
+        qwen_max_pixels=4_194_304,
+        qwen_reasoning_effort="low",
+        _env_file=None,
+    )
+
+    run_analysis(completions, settings=settings)
+
+    request = completions.calls[0]
+    assert request["extra_body"] == {"reasoning_effort": "low"}
+    assert "max_pixels" not in request["messages"][1]["content"][1]
+
+
 def test_missing_configuration_fails_before_request() -> None:
     completions = FakeCompletions()
     client = cast(AsyncOpenAI, FakeClient(completions))

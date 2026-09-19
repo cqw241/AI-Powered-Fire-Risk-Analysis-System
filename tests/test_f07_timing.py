@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from io import BytesIO
 from types import SimpleNamespace
@@ -11,6 +12,7 @@ from PIL import Image
 from test_f03_qwen import FakeClient, FakeCompletions, configured_settings
 
 import fire_safety.ui as ui
+from fire_safety.call_log import build_call_record
 from fire_safety.image import PreparedImage, prepare_image
 from fire_safety.pipeline import analyze
 from fire_safety.qwen import analyze_image
@@ -148,6 +150,23 @@ def test_report_summary_lists_stages_notes_and_total() -> None:
     assert "ttft=0.500s" in summary
 
 
+@pytest.mark.parametrize(
+    ("provider", "method"),
+    [
+        ("llamacpp", "Llama.cpp"),
+        ("dashscope", "阿里云百炼"),
+        ("vllm", "vLLM"),
+    ],
+)
+def test_call_record_names_each_invocation_method(provider: str, method: str) -> None:
+    report = TimingReport(total_seconds=1.0, stages=())
+    settings = Settings(qwen_provider=provider, _env_file=None)
+
+    record = build_call_record(status="completed", timing=report, settings=settings)
+
+    assert record["invocation_method"] == method
+
+
 def test_pipeline_keeps_post_model_work_in_one_stage() -> None:
     """Parsing, cleanup, and rule resolution are one segment, not three rows."""
 
@@ -281,11 +300,18 @@ def test_render_timing_html_without_report_is_empty() -> None:
 
 def test_analysis_event_appends_timing_panel_and_logs_it(tmp_path, monkeypatch, caplog) -> None:
     image_path = tmp_path / "scene.png"
+    call_log_path = tmp_path / "model_calls.jsonl"
     image_path.write_bytes(png_bytes())
     monkeypatch.setattr(ui, "analyze", stub_analyze)
+    settings = Settings(
+        qwen_model="Qwen3.8-27B",
+        qwen_provider="llamacpp",
+        call_log_path=call_log_path,
+        _env_file=None,
+    )
 
     with caplog.at_level(logging.INFO, logger=ui.__name__):
-        annotated, result_html = asyncio.run(run_analysis_event(str(image_path), Settings()))
+        annotated, result_html = asyncio.run(run_analysis_event(str(image_path), settings))
 
     assert annotated is not None
     assert "本次耗时" in result_html
@@ -298,21 +324,44 @@ def test_analysis_event_appends_timing_panel_and_logs_it(tmp_path, monkeypatch, 
         record.getMessage() for record in caplog.records if "[耗时]" in record.getMessage()
     )
     assert "status=completed" in log_line
+    assert "method=Llama.cpp" in log_line
+    assert "model=Qwen3.8-27B" in log_line
     assert "图片预处理=" in log_line
     assert "ttfb=1.234s" in log_line
     assert "prompt_tokens=4250" in log_line
 
+    records = [json.loads(line) for line in call_log_path.read_text().splitlines()]
+    assert len(records) == 1
+    record = records[0]
+    assert record["schema_version"] == "1.0"
+    assert record["status"] == "completed"
+    assert record["invocation_method"] == "Llama.cpp"
+    assert record["model_name"] == "Qwen3.8-27B"
+    assert record["image_preprocessing_seconds"] is not None
+    assert record["model_request_seconds"] is not None
+    assert record["post_processing_seconds"] is not None
+    assert record["ttfb_seconds"] == 1.234
+    assert record["ttft_seconds"] == 1.345
+    assert record["prompt_tokens"] == 4250
+    assert record["completion_tokens"] is None
+
 
 def test_analysis_event_reports_timing_when_the_image_is_unusable(tmp_path) -> None:
     image_path = tmp_path / "broken.png"
+    call_log_path = tmp_path / "model_calls.jsonl"
     image_path.write_bytes(b"not an image")
 
-    annotated, result_html = asyncio.run(run_analysis_event(str(image_path), Settings()))
+    settings = Settings(call_log_path=call_log_path, _env_file=None)
+    annotated, result_html = asyncio.run(run_analysis_event(str(image_path), settings))
 
     assert annotated is None
     assert "图片无法使用" in result_html
     assert "本次耗时" in result_html
     assert "图片预处理" in result_html
+    record = json.loads(call_log_path.read_text().strip())
+    assert record["status"] == "image_unusable"
+    assert record["image_preprocessing_seconds"] is not None
+    assert record["model_request_seconds"] is None
 
 
 def test_browser_reports_click_to_paint_elapsed() -> None:
