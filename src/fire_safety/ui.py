@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import base64
 import html
+import logging
 import os
 from pathlib import Path
 from typing import Any
@@ -29,6 +30,9 @@ from fire_safety.schemas import (
     PenaltyAssociation,
 )
 from fire_safety.settings import Settings, get_settings
+from fire_safety.timing import POST_MODEL_STAGE, TimingRecorder, TimingReport, recording, stage
+
+logger = logging.getLogger(__name__)
 
 # System font stacks only, no webfont imports: reliable in mainland-China and
 # intranet environments. Noto variants serve as local fallbacks.
@@ -80,6 +84,7 @@ def _render_top_banner_html(path: str | Path = _TOP_BANNER_PATH) -> str:
 _TOP_BANNER_HTML = _render_top_banner_html()
 
 _START_SCAN_JS = """() => {
+  window.__frsClickAt = performance.now();
   const sourceImage = document.getElementById("source_image");
   if (sourceImage?.querySelector("img")) {
     sourceImage.classList.add("frs-scanning");
@@ -88,6 +93,21 @@ _START_SCAN_JS = """() => {
 
 _STOP_SCAN_JS = """() => {
   document.getElementById("source_image")?.classList.remove("frs-scanning");
+}"""
+
+# 「点击 → 结果渲染完成」只有浏览器知道：服务端返回后还有传输、解码和绘制。
+# 这里在结果 DOM 完成两帧绘制后回填时间面板里的占位符；结果区没有该占位符
+# （例如未上传图片就点击、或旧结果）时静默跳过。
+_REPORT_ELAPSED_JS = """() => {
+  document.getElementById("source_image")?.classList.remove("frs-scanning");
+  const startedAt = window.__frsClickAt;
+  if (typeof startedAt !== "number") return;
+  const paint = () => {
+    const target = document.getElementById("frs-timing-client-total");
+    if (!target) return;
+    target.textContent = ((performance.now() - startedAt) / 1000).toFixed(2) + " s";
+  };
+  requestAnimationFrame(() => requestAnimationFrame(paint));
 }"""
 
 _CSS = (
@@ -370,6 +390,72 @@ _CSS = (
 
 .frs .hint { padding: 6px 2px; color: var(--frs-text-2); font-size: 15px; line-height: 1.7; }
 .frs .hint-title { margin: 0 0 6px; font-weight: 600; color: var(--frs-text); }
+
+/* 每次点击的耗时明细：默认折叠，不干扰报告阅读。 */
+.frs .timing {
+  margin-top: 14px;
+  border: 1px solid var(--frs-border);
+  border-radius: 8px;
+  background: var(--frs-bg);
+}
+.frs .timing > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  cursor: pointer;
+  list-style: none;
+}
+.frs .timing > summary::-webkit-details-marker { display: none; }
+.frs .timing > summary::before {
+  content: "+";
+  color: var(--frs-text-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+.frs .timing[open] > summary::before { content: "−"; }
+.frs .timing-title { font-size: 14px; font-weight: 600; color: var(--frs-text-3); }
+.frs .timing-total {
+  margin-left: auto;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  color: var(--frs-text-2);
+}
+.frs .timing-body { border-top: 1px solid var(--frs-border); padding: 10px 12px; }
+.frs .timing-row {
+  display: grid;
+  grid-template-columns: minmax(92px, 1.5fr) minmax(48px, 3fr) 68px 46px;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+  color: var(--frs-text-3);
+}
+.frs .timing-row + .timing-row { margin-top: 7px; }
+.frs .timing-name { overflow-wrap: anywhere; }
+.frs .timing-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--frs-low-bg);
+  overflow: hidden;
+}
+.frs .timing-bar {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--frs-low-bar);
+}
+.frs .timing-value,
+.frs .timing-share {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  text-align: right;
+  color: var(--frs-text-2);
+}
+.frs .timing-client { margin: 10px 0 0; font-size: 12.5px; color: var(--frs-text-2); }
+.frs .timing-client strong {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color: var(--frs-text-3);
+}
 """
 )
 
@@ -608,6 +694,54 @@ def render_result_html(result: AnalysisResult) -> str:
     return _render_status_html(result)
 
 
+def render_timing_html(timing: TimingReport | None = None) -> str:
+    """Render the collapsible per-click latency breakdown.
+
+    Kept out of :func:`render_result_html` so the measured report body is
+    rendered by the same call that produced the numbers, and so this panel can
+    be omitted entirely when no run has been measured. The browser-side total
+    stays a placeholder: only ``_REPORT_ELAPSED_JS`` knows it.
+    """
+
+    if timing is None:
+        return ""
+    rows = "".join(
+        _timing_row_html(item.name, item.seconds, timing.total_seconds)
+        for item in timing.stages
+    )
+    return (
+        '<div class="frs"><details class="timing">'
+        "<summary>"
+        '<span class="timing-title">本次耗时</span>'
+        f'<span class="timing-total">后端 {_esc(_format_seconds(timing.total_seconds))}</span>'
+        "</summary>"
+        f'<div class="timing-body">{rows}'
+        '<p class="timing-client">浏览器端「点击 → 结果渲染完成」：'
+        '<strong id="frs-timing-client-total">测量中…</strong></p>'
+        "</div></details></div>"
+    )
+
+
+def _timing_row_html(name: str, seconds: float, total_seconds: float) -> str:
+    share = seconds / total_seconds * 100 if total_seconds > 0 else 0.0
+    return (
+        '<div class="timing-row">'
+        f'<span class="timing-name">{_esc(name)}</span>'
+        '<span class="timing-track">'
+        f'<span class="timing-bar" style="width:{share:.1f}%"></span>'
+        "</span>"
+        f'<span class="timing-value">{_esc(_format_seconds(seconds))}</span>'
+        f'<span class="timing-share">{share:.1f}%</span>'
+        "</div>"
+    )
+
+
+def _format_seconds(seconds: float) -> str:
+    """Readable duration: milliseconds under one second, seconds above it."""
+
+    return f"{seconds * 1000:.0f} ms" if seconds < 1 else f"{seconds:.2f} s"
+
+
 def _render_completed_html(result: AnalysisResult) -> str:
     banner = (
         '<div class="banner banner-info">'
@@ -767,30 +901,55 @@ def _annotated_for_result(prepared: PreparedImage, result: AnalysisResult) -> Im
     return draw_bboxes(prepared, bboxes)
 
 
+def _log_timing(status: AnalysisStatus, timing: TimingReport) -> None:
+    """Emit one grep-able latency line per click for offline comparison."""
+
+    logger.info("[耗时] status=%s %s", status.value, timing.summary())
+
+
 async def _run_analysis_event(
     image_path: str | None, settings: Settings | None = None
 ) -> tuple[Image.Image | None, str]:
-    """Wire a Gradio upload event to the pipeline and the result renderer."""
+    """Wire a Gradio upload event to the pipeline and the result renderer.
+
+    One :class:`TimingRecorder` spans the whole click — preparation, pipeline,
+    and report render — so every instrumented stage lands in one breakdown,
+    including the error paths, which are the ones worth measuring when a run
+    is slow enough to time out.
+    """
 
     app_settings = settings or get_settings()
     if not image_path:
         return None, _EMPTY_HINT_HTML
-    try:
-        prepared = prepare_image(image_path, app_settings)
-    except ImageProcessingError as exc:
-        result = AnalysisResult(status=AnalysisStatus.IMAGE_UNUSABLE, message=str(exc), findings=[])
-        return None, render_result_html(result)
-    try:
-        result = await analyze(prepared, settings=app_settings)
-        annotated = _annotated_for_result(prepared, result)
-    except Exception as exc:  # UI 兜底：任何未预期异常都不崩页
-        result = AnalysisResult(
-            status=AnalysisStatus.MODEL_FAILED,
-            message=f"系统分析异常：{exc}",
-            findings=[],
-        )
-        return None, render_result_html(result)
-    return annotated, render_result_html(result)
+
+    recorder = TimingRecorder()
+    with recording(recorder):
+        try:
+            with stage("图片预处理"):
+                prepared = prepare_image(image_path, app_settings)
+        except ImageProcessingError as exc:
+            result = AnalysisResult(
+                status=AnalysisStatus.IMAGE_UNUSABLE, message=str(exc), findings=[]
+            )
+            annotated = None
+        else:
+            try:
+                result = await analyze(prepared, settings=app_settings)
+                with stage(POST_MODEL_STAGE):
+                    annotated = _annotated_for_result(prepared, result)
+            except Exception as exc:  # UI 兜底：任何未预期异常都不崩页
+                result = AnalysisResult(
+                    status=AnalysisStatus.MODEL_FAILED,
+                    message=f"系统分析异常：{exc}",
+                    findings=[],
+                )
+                annotated = None
+        with stage(POST_MODEL_STAGE):
+            result_html = render_result_html(result)
+
+    timing = recorder.snapshot()
+    _log_timing(result.status, timing)
+    return annotated, result_html + render_timing_html(timing)
 
 
 def build_app(settings: Settings | None = None) -> gr.Blocks:
@@ -848,7 +1007,7 @@ def build_app(settings: Settings | None = None) -> gr.Blocks:
             outputs=[annotated_output, result_area],
             show_progress="hidden",
         )
-        analysis_event.then(fn=None, js=_STOP_SCAN_JS)
+        analysis_event.then(fn=None, js=_REPORT_ELAPSED_JS)
         image_input.change(
             clear_analysis_outputs,
             outputs=[annotated_output, result_area],
@@ -904,4 +1063,5 @@ __all__ = [
     "render_empty_html",
     "render_loading_html",
     "render_result_html",
+    "render_timing_html",
 ]
