@@ -41,24 +41,52 @@ def valid_response_json() -> str:
 DEFAULT_RESPONSE = object()
 
 
+class FakeChunkStream:
+    """Async chunk stream: content pieces first, then one usage-only frame."""
+
+    def __init__(self, contents: list[str], usage: Any = None):
+        self._contents = contents
+        self._usage = usage
+
+    def __aiter__(self) -> Any:
+        return self._iterate()
+
+    async def _iterate(self) -> Any:
+        for text in self._contents:
+            yield SimpleNamespace(
+                choices=[SimpleNamespace(delta=SimpleNamespace(content=text))],
+                usage=None,
+            )
+        if self._usage is not None:
+            yield SimpleNamespace(choices=[], usage=self._usage)
+
+
 class FakeCompletions:
     def __init__(
         self,
         *,
         content: Any = DEFAULT_RESPONSE,
         error: Exception | None = None,
+        usage: Any = None,
     ):
         self.content = valid_response_json() if content is DEFAULT_RESPONSE else content
         self.error = error
+        self.usage = usage
         self.calls: list[dict[str, Any]] = []
 
     async def create(self, **kwargs: Any) -> Any:
         self.calls.append(kwargs)
         if self.error is not None:
             raise self.error
-        return SimpleNamespace(
-            choices=[SimpleNamespace(message=SimpleNamespace(content=self.content))]
-        )
+        return FakeChunkStream(self._chunks(), self.usage)
+
+    def _chunks(self) -> list[str]:
+        """Split the payload in two so tests exercise stream reassembly."""
+
+        if not isinstance(self.content, str) or not self.content:
+            return []
+        middle = len(self.content) // 2
+        return [self.content[:middle], self.content[middle:]]
 
 
 class FakeClient:
@@ -139,6 +167,8 @@ def test_analyze_image_sends_one_strict_structured_request() -> None:
             "schema": load_visual_investigation_schema(),
         },
     }
+    assert request["stream"] is True
+    assert request["stream_options"] == {"include_usage": True}
     assert request["messages"][0]["role"] == "system"
     image_content = request["messages"][1]["content"][1]
     assert image_content["max_pixels"] == 4_194_304

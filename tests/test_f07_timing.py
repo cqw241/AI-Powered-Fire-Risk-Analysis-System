@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from io import BytesIO
+from types import SimpleNamespace
 
 import pytest
 from conftest import VALID_VISUAL_OUTPUT
@@ -19,9 +20,11 @@ from fire_safety.settings import Settings
 from fire_safety.timing import (
     POST_MODEL_STAGE,
     StageTiming,
+    TimingNote,
     TimingRecorder,
     TimingReport,
     active_recorder,
+    note,
     recording,
     stage,
 )
@@ -53,6 +56,9 @@ async def stub_analyze(prepared: object, *, settings: Settings | None = None) ->
         pass
     with stage("模型请求"):
         pass
+    note("ttfb", "1.234s")
+    note("ttft", "1.345s")
+    note("prompt_tokens", 4250)
     with stage(POST_MODEL_STAGE):
         return AnalysisResult(status=AnalysisStatus.COMPLETED, findings=[])
 
@@ -128,13 +134,18 @@ def test_recorders_do_not_share_stages_between_concurrent_runs() -> None:
     assert stage_names(second) == ["乙"]
 
 
-def test_report_summary_lists_stages_and_total() -> None:
-    report = TimingReport(total_seconds=1.5, stages=(StageTiming(name="模型请求", seconds=1.25),))
+def test_report_summary_lists_stages_notes_and_total() -> None:
+    report = TimingReport(
+        total_seconds=1.5,
+        stages=(StageTiming(name="模型请求", seconds=1.25),),
+        notes=(TimingNote(name="ttft", value="0.500s"),),
+    )
 
     summary = report.summary()
 
     assert summary.startswith("total=1.500s")
     assert "模型请求=1.250s" in summary
+    assert "ttft=0.500s" in summary
 
 
 def test_pipeline_keeps_post_model_work_in_one_stage() -> None:
@@ -188,6 +199,59 @@ def test_qwen_reports_setup_and_request_as_one_stage() -> None:
     assert len(completions.calls) == 1
 
 
+def test_qwen_records_usage_and_first_token_latency() -> None:
+    """Token accounting and 首包延迟 ride along as notes, not as stages."""
+
+    usage = SimpleNamespace(
+        prompt_tokens=4250,
+        completion_tokens=2355,
+        completion_tokens_details=SimpleNamespace(reasoning_tokens=1151),
+    )
+
+    recorder = TimingRecorder()
+    with recording(recorder):
+        asyncio.run(
+            analyze_image(
+                prepared_image(),
+                settings=configured_settings(),
+                client=FakeClient(FakeCompletions(usage=usage)),  # type: ignore[arg-type]
+            )
+        )
+
+    notes = {item.name: item.value for item in recorder.notes}
+    assert set(notes) == {
+        "ttfb",
+        "ttft",
+        "prompt_tokens",
+        "completion_tokens",
+        "reasoning_tokens",
+    }
+    assert notes["prompt_tokens"] == 4250
+    assert notes["completion_tokens"] == 2355
+    assert notes["reasoning_tokens"] == 1151
+    assert str(notes["ttfb"]).endswith("s")
+
+
+def test_qwen_records_no_token_notes_without_usage() -> None:
+    recorder = TimingRecorder()
+    with recording(recorder):
+        asyncio.run(
+            analyze_image(
+                prepared_image(),
+                settings=configured_settings(),
+                client=FakeClient(FakeCompletions()),  # type: ignore[arg-type]
+            )
+        )
+
+    assert [item.name for item in recorder.notes] == ["ttfb", "ttft"]
+
+
+def test_notes_are_noops_without_a_recorder() -> None:
+    note("ttft", "1.000s")
+
+    assert active_recorder() is None
+
+
 def test_render_timing_html_lists_one_row_per_stage() -> None:
     report = TimingReport(
         total_seconds=42.0,
@@ -235,6 +299,8 @@ def test_analysis_event_appends_timing_panel_and_logs_it(tmp_path, monkeypatch, 
     )
     assert "status=completed" in log_line
     assert "图片预处理=" in log_line
+    assert "ttfb=1.234s" in log_line
+    assert "prompt_tokens=4250" in log_line
 
 
 def test_analysis_event_reports_timing_when_the_image_is_unusable(tmp_path) -> None:

@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import base64
 import json
+from collections.abc import AsyncIterator
 from enum import StrEnum
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 
 from openai import AsyncOpenAI, OpenAIError
@@ -21,7 +23,7 @@ from fire_safety.risk_packs import (
 )
 from fire_safety.schemas import VisualInvestigation, load_visual_investigation_schema
 from fire_safety.settings import Settings, get_settings
-from fire_safety.timing import POST_MODEL_STAGE, stage
+from fire_safety.timing import POST_MODEL_STAGE, note, stage
 
 PROMPT_PATH = PROJECT_ROOT / "prompts" / "visual_investigator.md"
 ISSUE_CATALOG_PLACEHOLDER = "{{ISSUE_CATALOG}}"
@@ -163,20 +165,29 @@ async def analyze_image(
         extra_body["reasoning_effort"] = app_settings.qwen_reasoning_effort
     if extra_body:
         request_kwargs["extra_body"] = extra_body
+    # Streamed so the client can tell waiting from generating: a single
+    # non-streamed await only ever yields one number for both. include_usage
+    # makes the endpoint report token accounting on the final chunk.
+    request_kwargs["stream"] = True
+    request_kwargs["stream_options"] = {"include_usage": True}
 
     with stage("模型请求"):
+        requested_at = perf_counter()
         try:
-            response = await qwen_client.chat.completions.create(**request_kwargs)
+            stream = await qwen_client.chat.completions.create(**request_kwargs)
+            content, usage, first_frame_seconds, first_content_seconds = await _read_stream(
+                stream, requested_at=requested_at
+            )
         except OpenAIError as exc:
             raise QwenRequestError(
                 "Qwen 视觉分析请求失败",
                 reason="request_failed",
             ) from exc
+    _record_request_notes(usage, first_frame_seconds, first_content_seconds)
 
     with stage(POST_MODEL_STAGE):
-        content = _response_content(response)
         try:
-            payload = json.loads(content)
+            payload = json.loads(_require_content(content))
         except json.JSONDecodeError as exc:
             raise InvalidModelOutputError(
                 "Qwen 返回的结构化结果无效",
@@ -201,24 +212,76 @@ def _image_data_url(image: PreparedImage) -> str:
     return f"data:{image.media_type};base64,{payload}"
 
 
-def _response_content(response: Any) -> str:
-    try:
-        content = response.choices[0].message.content
-    except (AttributeError, IndexError, TypeError) as exc:
-        return _missing_response_content(exc)
-    if not isinstance(content, str) or not content.strip():
-        return _missing_response_content()
-    return content
+async def _read_stream(
+    stream: AsyncIterator[Any], *, requested_at: float
+) -> tuple[str, Any, float | None, float | None]:
+    """Reassemble a streamed completion and mark where its wait ended.
+
+    Returns the joined content, the provider's usage object when the endpoint
+    reports one, and two timings measured from the request:
+
+    - ``ttfb``: the first generation frame. Everything before it is connect,
+      upload, server queueing, image encoding, and prompt prefill;
+    - ``ttft``: the first frame carrying visible content. A reasoning model
+      emits its thinking here first, so ``ttft - ttfb`` is thinking time.
+
+    The gap between the two is what a non-streamed request cannot show: one
+    await collapses waiting, thinking, and answering into a single number.
+    """
+
+    parts: list[str] = []
+    usage: Any = None
+    first_frame_seconds: float | None = None
+    first_content_seconds: float | None = None
+    async for chunk in stream:
+        if getattr(chunk, "usage", None) is not None:
+            usage = chunk.usage
+        choices = getattr(chunk, "choices", None) or []
+        if choices and first_frame_seconds is None:
+            first_frame_seconds = perf_counter() - requested_at
+        for choice in choices:
+            text = getattr(getattr(choice, "delta", None), "content", None)
+            if not text:
+                continue
+            if first_content_seconds is None:
+                first_content_seconds = perf_counter() - requested_at
+            parts.append(text)
+    return "".join(parts), usage, first_frame_seconds, first_content_seconds
 
 
-def _missing_response_content(cause: Exception | None = None) -> str:
-    error = InvalidModelOutputError(
-        "Qwen 响应缺少结构化内容",
-        reason="missing_response_content",
+def _record_request_notes(
+    usage: Any, first_frame_seconds: float | None, first_content_seconds: float | None
+) -> None:
+    """Record where the model request spent its time and its tokens."""
+
+    if first_frame_seconds is not None:
+        note("ttfb", f"{first_frame_seconds:.3f}s")
+    if first_content_seconds is not None:
+        note("ttft", f"{first_content_seconds:.3f}s")
+    if usage is None:
+        return
+    for name, value in (
+        ("prompt_tokens", getattr(usage, "prompt_tokens", None)),
+        ("completion_tokens", getattr(usage, "completion_tokens", None)),
+    ):
+        if value is not None:
+            note(name, value)
+    reasoning = getattr(
+        getattr(usage, "completion_tokens_details", None), "reasoning_tokens", None
     )
-    if cause is not None:
-        raise error from cause
-    raise error
+    if reasoning is not None:
+        note("reasoning_tokens", reasoning)
+
+
+def _require_content(content: str) -> str:
+    """Reject an empty streamed response with the documented reason."""
+
+    if not content.strip():
+        raise InvalidModelOutputError(
+            "Qwen 响应缺少结构化内容",
+            reason="missing_response_content",
+        )
+    return content
 
 
 __all__ = [

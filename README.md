@@ -98,17 +98,30 @@ Gradio 上传图片
 | 阶段 | 覆盖范围 | 位置 |
 | --- | --- | --- |
 | 图片预处理 | 读取文件、解码、EXIF 修正、重新编码 | `ui.py`（传入已准备图片时由调用方计时，不重复） |
-| 模型请求 | 建 `AsyncOpenAI` 客户端、加载 Prompt 与 Schema、图片 base64，以及一次 `chat.completions.create` 往返 | `qwen.py` |
+| 模型请求 | 建 `AsyncOpenAI` 客户端、加载 Prompt 与 Schema、图片 base64，以及一次流式 `chat.completions.create` 往返 | `qwen.py` |
 | 后续处理 | 模型返回之后的一切：响应解析与 Schema 校验、Finding 清洗、Issue Code 与法规关联、标注图绘制、结果渲染 | `qwen.py` + `pipeline.py` + `ui.py` |
+
+日志行在三段之外还带模型侧数据，用来回答「模型请求这 58 秒在做什么」：
+
+| 字段 | 含义 |
+| --- | --- |
+| `ttfb` | 请求发出到首个生成帧：建连、上传、服务端排队、图像编码、prompt prefill |
+| `ttft` | 请求发出到首个**可见内容** token；`ttft − ttfb` 即模型的 thinking 时长 |
+| `prompt_tokens` / `completion_tokens` / `reasoning_tokens` | provider 返回的 token 账单 |
+
+这些字段只进日志行，面板仍固定三段。单次 `await` 只能得到一个总数，所以客户端改成流式
+（`stream=True` + `stream_options={"include_usage": True}`）后再拼装 JSON：只有这样才能把
+「等待」「thinking」「输出」分开。
 
 实测（`data/images/route_blocked.png`，1448×1086）：
 
 ```text
-图片预处理    0.449 s    0.6%
-模型请求     76.361 s   99.4%
-后续处理      0.008 s    0.0%
-总计         76.820 s
+[耗时] status=completed total=59.089s 图片预处理=0.429s 模型请求=58.651s 后续处理=0.007s
+       ttfb=3.984s ttft=31.627s prompt_tokens=4250 completion_tokens=2925 reasoning_tokens=1394
 ```
+
+即 58.65 s 的模型请求 ≈ 等待 4.0 s + thinking 27.6 s + 输出 JSON 27.0 s。prompt 的 4250 token 里
+2718 是文本（prompt 本身加注入的 Issue Code 目录），1532 是图片。
 
 实现见 `src/fire_safety/timing.py`：埋点是 `stage()` 上下文，同一个 recorder 由
 `ui._run_analysis_event` 在每次点击时激活，`ContextVar` 保证并发事件不会互相记账。
@@ -238,7 +251,7 @@ bbox 使用 0-1000 归一化坐标：
 当前启用规则包包含 33 个 Issue Code、49 条法规条款、70 条实体规则绑定和 13 条处罚绑定。测试与静态检查结果：
 
 ```text
-159 passed
+162 passed
 ruff check . → All checks passed
 ```
 

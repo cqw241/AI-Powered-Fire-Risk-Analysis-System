@@ -35,17 +35,33 @@ class StageTiming:
 
 
 @dataclass(frozen=True)
+class TimingNote:
+    """One measured value attached to a run that is not a duration.
+
+    Token accounting and the model's first-token latency belong to the model
+    request rather than beside it, so they ride along as notes instead of
+    becoming stages of their own.
+    """
+
+    name: str
+    value: object
+
+
+@dataclass(frozen=True)
 class TimingReport:
     """Frozen snapshot of a run's stages, taken once the measured work is done."""
 
     total_seconds: float
     stages: tuple[StageTiming, ...]
+    notes: tuple[TimingNote, ...] = ()
 
     def summary(self) -> str:
         """Return a single-line, grep-able breakdown in recorded order."""
 
         stages = " ".join(f"{item.name}={item.seconds:.3f}s" for item in self.stages)
-        return f"total={self.total_seconds:.3f}s" + (f" {stages}" if stages else "")
+        notes = " ".join(f"{item.name}={item.value}" for item in self.notes)
+        parts = (f"total={self.total_seconds:.3f}s", stages, notes)
+        return " ".join(part for part in parts if part)
 
 
 class TimingRecorder:
@@ -53,6 +69,7 @@ class TimingRecorder:
 
     def __init__(self) -> None:
         self._stages: list[StageTiming] = []
+        self._notes: list[TimingNote] = []
         self._started_at = perf_counter()
 
     def record(self, name: str, seconds: float) -> None:
@@ -69,11 +86,22 @@ class TimingRecorder:
             return
         self._stages.append(StageTiming(name=name, seconds=seconds))
 
+    def note(self, name: str, value: object) -> None:
+        """Attach one measured value that is not a duration."""
+
+        self._notes.append(TimingNote(name=name, value=value))
+
     @property
     def stages(self) -> tuple[StageTiming, ...]:
         """Stages in recorded — that is, chronological — order."""
 
         return tuple(self._stages)
+
+    @property
+    def notes(self) -> tuple[TimingNote, ...]:
+        """Notes in recorded order."""
+
+        return tuple(self._notes)
 
     @contextmanager
     def stage(self, name: str) -> Iterator[None]:
@@ -91,6 +119,7 @@ class TimingRecorder:
         return TimingReport(
             total_seconds=perf_counter() - self._started_at,
             stages=tuple(self._stages),
+            notes=tuple(self._notes),
         )
 
 
@@ -133,12 +162,22 @@ def stage(name: str) -> Iterator[None]:
         yield
 
 
+def note(name: str, value: object) -> None:
+    """Attach one measured value when a recorder is active; otherwise do nothing."""
+
+    recorder = _active_recorder.get()
+    if recorder is not None:
+        recorder.note(name, value)
+
+
 __all__ = [
     "POST_MODEL_STAGE",
     "StageTiming",
+    "TimingNote",
     "TimingRecorder",
     "TimingReport",
     "active_recorder",
+    "note",
     "recording",
     "stage",
 ]
