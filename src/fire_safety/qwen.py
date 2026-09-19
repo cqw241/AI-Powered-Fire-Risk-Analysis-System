@@ -21,6 +21,7 @@ from fire_safety.risk_packs import (
 )
 from fire_safety.schemas import VisualInvestigation, load_visual_investigation_schema
 from fire_safety.settings import Settings, get_settings
+from fire_safety.timing import POST_MODEL_STAGE, stage
 
 PROMPT_PATH = PROJECT_ROOT / "prompts" / "visual_investigator.md"
 ISSUE_CATALOG_PLACEHOLDER = "{{ISSUE_CATALOG}}"
@@ -112,14 +113,19 @@ async def analyze_image(
             reason="missing_qwen_configuration",
         )
 
-    qwen_client = client or AsyncOpenAI(
-        base_url=app_settings.qwen_base_url,
-        api_key=app_settings.qwen_api_key.get_secret_value(),
-        max_retries=0,
-    )
-    prompt = build_visual_prompt()
-    schema = load_visual_investigation_schema()
-    data_url = _image_data_url(image)
+    # Setup and request share one stage name: the recorder merges the adjacent
+    # records into a single 模型请求 row. Setup is not free — the client is
+    # built from scratch (no connection pool reuse) and the prompt, schema, and
+    # base64 image payload are all re-read or re-encoded on every call.
+    with stage("模型请求"):
+        qwen_client = client or AsyncOpenAI(
+            base_url=app_settings.qwen_base_url,
+            api_key=app_settings.qwen_api_key.get_secret_value(),
+            max_retries=0,
+        )
+        prompt = build_visual_prompt()
+        schema = load_visual_investigation_schema()
+        data_url = _image_data_url(image)
     image_content: dict[str, Any] = {
         "type": "image_url",
         "image_url": {"url": data_url},
@@ -158,34 +164,36 @@ async def analyze_image(
     if extra_body:
         request_kwargs["extra_body"] = extra_body
 
-    try:
-        response = await qwen_client.chat.completions.create(**request_kwargs)
-    except OpenAIError as exc:
-        raise QwenRequestError(
-            "Qwen 视觉分析请求失败",
-            reason="request_failed",
-        ) from exc
+    with stage("模型请求"):
+        try:
+            response = await qwen_client.chat.completions.create(**request_kwargs)
+        except OpenAIError as exc:
+            raise QwenRequestError(
+                "Qwen 视觉分析请求失败",
+                reason="request_failed",
+            ) from exc
 
-    content = _response_content(response)
-    try:
-        payload = json.loads(content)
-    except json.JSONDecodeError as exc:
-        raise InvalidModelOutputError(
-            "Qwen 返回的结构化结果无效",
-            reason="schema_validation_failed",
-        ) from exc
-    # DashScope OpenAI-compatible mode has been observed wrapping the single
-    # structured object in a one-element array; exactly-one-element arrays are
-    # normalized, anything else reaches the validator and is reported as-is.
-    if isinstance(payload, list) and len(payload) == 1 and isinstance(payload[0], dict):
-        payload = payload[0]
-    try:
-        return VisualInvestigation.model_validate(payload)
-    except (ValidationError, ValueError) as exc:
-        raise InvalidModelOutputError(
-            "Qwen 返回的结构化结果无效",
-            reason="schema_validation_failed",
-        ) from exc
+    with stage(POST_MODEL_STAGE):
+        content = _response_content(response)
+        try:
+            payload = json.loads(content)
+        except json.JSONDecodeError as exc:
+            raise InvalidModelOutputError(
+                "Qwen 返回的结构化结果无效",
+                reason="schema_validation_failed",
+            ) from exc
+        # DashScope OpenAI-compatible mode has been observed wrapping the single
+        # structured object in a one-element array; exactly-one-element arrays are
+        # normalized, anything else reaches the validator and is reported as-is.
+        if isinstance(payload, list) and len(payload) == 1 and isinstance(payload[0], dict):
+            payload = payload[0]
+        try:
+            return VisualInvestigation.model_validate(payload)
+        except (ValidationError, ValueError) as exc:
+            raise InvalidModelOutputError(
+                "Qwen 返回的结构化结果无效",
+                reason="schema_validation_failed",
+            ) from exc
 
 
 def _image_data_url(image: PreparedImage) -> str:

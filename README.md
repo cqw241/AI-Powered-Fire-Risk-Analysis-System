@@ -88,6 +88,43 @@ Gradio 上传图片
 → Gradio 展示 bbox、Finding、法规和整改建议
 ```
 
+## 耗时分段
+
+每次点击「开始分析」都会记录一段耗时：结果区底部有一个默认折叠的「本次耗时」面板，终端同时
+打印一行 `[耗时] status=... total=... <阶段>=...s`。两者来自同一次测量。
+
+面板和日志固定显示三段：
+
+| 阶段 | 覆盖范围 | 位置 |
+| --- | --- | --- |
+| 图片预处理 | 读取文件、解码、EXIF 修正、重新编码 | `ui.py`（传入已准备图片时由调用方计时，不重复） |
+| 模型请求 | 建 `AsyncOpenAI` 客户端、加载 Prompt 与 Schema、图片 base64，以及一次 `chat.completions.create` 往返 | `qwen.py` |
+| 后续处理 | 模型返回之后的一切：响应解析与 Schema 校验、Finding 清洗、Issue Code 与法规关联、标注图绘制、结果渲染 | `qwen.py` + `pipeline.py` + `ui.py` |
+
+实测（`data/images/route_blocked.png`，1448×1086）：
+
+```text
+图片预处理    0.449 s    0.6%
+模型请求     76.361 s   99.4%
+后续处理      0.008 s    0.0%
+总计         76.820 s
+```
+
+实现见 `src/fire_safety/timing.py`：埋点是 `stage()` 上下文，同一个 recorder 由
+`ui._run_analysis_event` 在每次点击时激活，`ContextVar` 保证并发事件不会互相记账。
+没有激活 recorder 时 `stage()` 是空操作，因此 pipeline 与 Qwen 客户端的公开签名和测试替身都不受影响。
+
+两点实现取舍：
+
+- **名字相同且相邻的阶段会合并。**「模型请求」由准备与请求两段组成，「后续处理」横跨三个模块，
+  同名相邻记录相加为一行，所以每段仍是一段连续测量，而不是多行近乎为零的明细。
+- **规则目录加载不计时。**`get_rule_catalog()` 是 `lru_cache`，只在首次请求读盘；首次请求的这部分开销
+  落在「后续处理」与总计的差额里（毫秒级）。
+
+面板同时显示浏览器端的「点击 → 结果渲染完成」：服务端返回后还有传输、图片解码和绘制，这部分只有
+浏览器知道，由结果区 DOM 完成两帧绘制后的 JS 回填。终端日志需要 INFO 级别，`app.py` 已显式配置
+（Gradio 与 uvicorn 都不配置 root logger，缺省只输出 WARNING 以上）。
+
 ## F02 图片处理接口
 
 `fire_safety.image.prepare_image` 接收上传字节或文件路径，返回 `PreparedImage`。其中
@@ -196,11 +233,12 @@ bbox 使用 0-1000 归一化坐标：
 | F04 | 已完成 | Issue Code 白名单、Rule Binding、Clause 回填和整改建议 |
 | F05 | 已完成 | Pipeline、AnalysisResult 和最终 Gradio 展示 |
 | F06 | 进行中 | 自动化测试已完成；待补充五类真实图片端到端验收记录 |
+| F07 | 已完成 | 每次点击的耗时分段：结果区折叠面板 + 终端 `[耗时]` 日志 |
 
 当前启用规则包包含 33 个 Issue Code、49 条法规条款、70 条实体规则绑定和 13 条处罚绑定。测试与静态检查结果：
 
 ```text
-145 passed
+159 passed
 ruff check . → All checks passed
 ```
 

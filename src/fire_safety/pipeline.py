@@ -37,6 +37,7 @@ from fire_safety.schemas import (
     VisualInvestigation,
 )
 from fire_safety.settings import Settings
+from fire_safety.timing import POST_MODEL_STAGE, stage
 
 ImageSource: TypeAlias = PreparedImage | bytes | bytearray | str | Path
 
@@ -74,10 +75,16 @@ async def analyze(
 ) -> AnalysisResult:
     """Run one image through preparation, Qwen, cleanup, and rule resolution."""
 
-    try:
-        prepared = image if isinstance(image, PreparedImage) else prepare_image(image, settings)
-    except ImageProcessingError as exc:
-        return _error_result(AnalysisStatus.IMAGE_UNUSABLE, str(exc))
+    if isinstance(image, PreparedImage):
+        # An already prepared image is not timed twice: the caller that ran
+        # prepare_image owns the 图片预处理 stage.
+        prepared = image
+    else:
+        try:
+            with stage("图片预处理"):
+                prepared = prepare_image(image, settings)
+        except ImageProcessingError as exc:
+            return _error_result(AnalysisStatus.IMAGE_UNUSABLE, str(exc))
 
     # Resolved before the model call: a broken local rule package is a local
     # misconfiguration, and discovering it must not cost a paid Qwen request.
@@ -87,10 +94,14 @@ async def analyze(
     except RuleDataError as exc:
         return _error_result(AnalysisStatus.MODEL_FAILED, str(exc))
 
+    # The model request times itself in ``qwen.analyze_image``; everything from
+    # the returned payload to the resolved findings is one shared stage, which
+    # the recorder merges with the parsing qwen records under the same name.
     try:
         raw_visual = await qwen_analyzer(prepared, settings=settings)
-        visual = _coerce_visual_investigation(raw_visual)
-        cleaned_findings = _clean_visual_findings(visual)
+        with stage(POST_MODEL_STAGE):
+            visual = _coerce_visual_investigation(raw_visual)
+            cleaned_findings = _clean_visual_findings(visual)
     except InvalidModelOutputError as exc:
         return _error_result(AnalysisStatus.INVALID_MODEL_OUTPUT, str(exc))
     except VisualCleanupError as exc:
@@ -100,7 +111,8 @@ async def analyze(
     except QwenError as exc:
         return _error_result(AnalysisStatus(exc.status.value), str(exc))
 
-    findings = _apply_rules(cleaned_findings, catalog)
+    with stage(POST_MODEL_STAGE):
+        findings = _apply_rules(cleaned_findings, catalog)
     if not findings:
         return AnalysisResult(
             status=AnalysisStatus.NO_FINDINGS,
