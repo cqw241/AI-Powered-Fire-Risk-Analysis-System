@@ -120,7 +120,7 @@ def test_prompt_injects_issue_code_catalog() -> None:
     assert "{{ISSUE_CATALOG}}" not in prompt
     assert "`PASSAGE_OBSTRUCTED`" in prompt
     assert "画面中的人员通行路径被物体明显占用" in prompt
-    assert "不要输出" in prompt
+    assert "禁止输出" in prompt
     assert "法规名称" in prompt
 
 

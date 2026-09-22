@@ -21,6 +21,7 @@ from PIL import Image
 
 from fire_safety.call_log import append_call_record
 from fire_safety.image import ImageProcessingError, PreparedImage, draw_bboxes, prepare_image
+from fire_safety.model_output import captured_model_output, capturing
 from fire_safety.pipeline import analyze
 from fire_safety.schemas import (
     AnalysisFinding,
@@ -85,7 +86,6 @@ def _render_top_banner_html(path: str | Path = _TOP_BANNER_PATH) -> str:
 _TOP_BANNER_HTML = _render_top_banner_html()
 
 _START_SCAN_JS = """() => {
-  window.__frsClickAt = performance.now();
   const sourceImage = document.getElementById("source_image");
   if (sourceImage?.querySelector("img")) {
     sourceImage.classList.add("frs-scanning");
@@ -94,21 +94,6 @@ _START_SCAN_JS = """() => {
 
 _STOP_SCAN_JS = """() => {
   document.getElementById("source_image")?.classList.remove("frs-scanning");
-}"""
-
-# 「点击 → 结果渲染完成」只有浏览器知道：服务端返回后还有传输、解码和绘制。
-# 这里在结果 DOM 完成两帧绘制后回填时间面板里的占位符；结果区没有该占位符
-# （例如未上传图片就点击、或旧结果）时静默跳过。
-_REPORT_ELAPSED_JS = """() => {
-  document.getElementById("source_image")?.classList.remove("frs-scanning");
-  const startedAt = window.__frsClickAt;
-  if (typeof startedAt !== "number") return;
-  const paint = () => {
-    const target = document.getElementById("frs-timing-client-total");
-    if (!target) return;
-    target.textContent = ((performance.now() - startedAt) / 1000).toFixed(2) + " s";
-  };
-  requestAnimationFrame(() => requestAnimationFrame(paint));
 }"""
 
 _CSS = (
@@ -452,10 +437,43 @@ _CSS = (
   text-align: right;
   color: var(--frs-text-2);
 }
-.frs .timing-client { margin: 10px 0 0; font-size: 12.5px; color: var(--frs-text-2); }
-.frs .timing-client strong {
+
+/* 模型输出原文：与耗时面板同样默认折叠，用于核对模型到底返回了什么。 */
+.frs .raw {
+  margin-top: 10px;
+  border: 1px solid var(--frs-border);
+  border-radius: 8px;
+  background: var(--frs-bg);
+}
+.frs .raw > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  cursor: pointer;
+  list-style: none;
+}
+.frs .raw > summary::-webkit-details-marker { display: none; }
+.frs .raw > summary::before {
+  content: "+";
+  color: var(--frs-text-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+.frs .raw[open] > summary::before { content: "−"; }
+.frs .raw-title { font-size: 14px; font-weight: 600; color: var(--frs-text-3); }
+.frs .raw-text {
+  max-height: 420px;
+  margin: 0;
+  padding: 10px 12px;
+  overflow: auto;
+  border-top: 1px solid var(--frs-border);
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.75;
   color: var(--frs-text-3);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 """
 )
@@ -700,8 +718,7 @@ def render_timing_html(timing: TimingReport | None = None) -> str:
 
     Kept out of :func:`render_result_html` so the measured report body is
     rendered by the same call that produced the numbers, and so this panel can
-    be omitted entirely when no run has been measured. The browser-side total
-    stays a placeholder: only ``_REPORT_ELAPSED_JS`` knows it.
+    be omitted entirely when no run has been measured.
     """
 
     if timing is None:
@@ -714,12 +731,31 @@ def render_timing_html(timing: TimingReport | None = None) -> str:
         '<div class="frs"><details class="timing">'
         "<summary>"
         '<span class="timing-title">本次耗时</span>'
-        f'<span class="timing-total">后端 {_esc(_format_seconds(timing.total_seconds))}</span>'
+        f'<span class="timing-total">{_esc(_format_seconds(timing.total_seconds))}</span>'
         "</summary>"
-        f'<div class="timing-body">{rows}'
-        '<p class="timing-client">浏览器端「点击 → 结果渲染完成」：'
-        '<strong id="frs-timing-client-total">测量中…</strong></p>'
-        "</div></details></div>"
+        f'<div class="timing-body">{rows}</div>'
+        "</details></div>"
+    )
+
+
+def render_model_output_html(text: str | None = None) -> str:
+    """Render the model's untouched response as its own collapsible panel.
+
+    The point of the panel is that nothing is added, removed, or reformatted —
+    a reader comparing it with the findings above can see whether the model
+    answered wrongly or answered faithfully and was dropped later. Only HTML
+    escaping sits between the captured text and the page.
+    """
+
+    if not text:
+        return ""
+    return (
+        '<div class="frs"><details class="raw">'
+        "<summary>"
+        '<span class="raw-title">模型输出原文</span>'
+        "</summary>"
+        f'<pre class="raw-text">{_esc(text)}</pre>'
+        "</details></div>"
     )
 
 
@@ -937,7 +973,7 @@ async def _run_analysis_event(
         return None, _EMPTY_HINT_HTML
 
     recorder = TimingRecorder()
-    with recording(recorder):
+    with capturing(), recording(recorder):
         try:
             with stage("图片预处理"):
                 prepared = prepare_image(image_path, app_settings)
@@ -960,6 +996,7 @@ async def _run_analysis_event(
                 annotated = None
         with stage(POST_MODEL_STAGE):
             result_html = render_result_html(result)
+        raw_output = captured_model_output()
 
     timing = recorder.snapshot()
     _log_timing(result.status, timing, app_settings)
@@ -967,7 +1004,9 @@ async def _run_analysis_event(
         append_call_record(status=result.status.value, timing=timing, settings=app_settings)
     except OSError:
         logger.exception("调用记录写入失败：%s", app_settings.call_log_path)
-    return annotated, result_html + render_timing_html(timing)
+    return annotated, (
+        result_html + render_timing_html(timing) + render_model_output_html(raw_output)
+    )
 
 
 def build_app(settings: Settings | None = None) -> gr.Blocks:
@@ -1025,7 +1064,7 @@ def build_app(settings: Settings | None = None) -> gr.Blocks:
             outputs=[annotated_output, result_area],
             show_progress="hidden",
         )
-        analysis_event.then(fn=None, js=_REPORT_ELAPSED_JS)
+        analysis_event.then(fn=None, js=_STOP_SCAN_JS)
         image_input.change(
             clear_analysis_outputs,
             outputs=[annotated_output, result_area],
@@ -1080,6 +1119,7 @@ __all__ = [
     "launch_app",
     "render_empty_html",
     "render_loading_html",
+    "render_model_output_html",
     "render_result_html",
     "render_timing_html",
 ]
