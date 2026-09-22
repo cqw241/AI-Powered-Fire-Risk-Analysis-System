@@ -199,6 +199,13 @@ def test_invalid_reasoning_effort_is_rejected() -> None:
         Settings(qwen_reasoning_effort="extreme", _env_file=None)
 
 
+@pytest.mark.parametrize("reasoning_effort", ["none", "low", "medium", "xhigh"])
+def test_supported_reasoning_effort_is_accepted(reasoning_effort: str) -> None:
+    settings = Settings(qwen_reasoning_effort=reasoning_effort, _env_file=None)
+
+    assert settings.qwen_reasoning_effort == reasoning_effort
+
+
 def test_invalid_qwen_provider_is_rejected() -> None:
     with pytest.raises(ValidationError):
         Settings(qwen_provider="other", _env_file=None)

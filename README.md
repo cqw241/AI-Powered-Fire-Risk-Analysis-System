@@ -53,8 +53,8 @@ QWEN_MODEL=Qwen3.8-27B
 QWEN_PROVIDER=dashscope
 # Qwen3.8-27B 图片像素上限：65536–16777216；默认 8388608
 QWEN_MAX_PIXELS=8388608
-# 可选：low / medium / xhigh；未配置时不向模型服务发送 reasoning_effort
-# QWEN_REASONING_EFFORT=low
+# 可选：none / low / medium / xhigh；none 关闭支持该档位的模型思考模式
+# QWEN_REASONING_EFFORT=none
 # 可选；默认写入项目根目录 model_calls.jsonl
 # CALL_LOG_PATH=model_calls.jsonl
 ```
@@ -62,7 +62,8 @@ QWEN_MAX_PIXELS=8388608
 可复制 `.env.example` 为 `.env` 后填写配置。真实密钥不会提交到仓库。
 `QWEN_PROVIDER` 可选 `dashscope`、`llamacpp` 或 `vllm`：DashScope 把 `max_pixels` 放入图片内容项，
 vLLM 通过 `mm_processor_kwargs` 传给视觉处理器，llama.cpp 的图片 token 上限由服务端启动参数控制。
-`QWEN_REASONING_EFFORT` 为可选项；默认不配置时保持模型服务原有默认推理行为。
+`QWEN_REASONING_EFFORT` 为可选项；`none` 可关闭百炼 Qwen3.8 混合思考模型的思考模式，
+默认不配置时保持模型服务原有默认推理行为。
 
 安装和运行：
 
