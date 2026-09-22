@@ -15,6 +15,7 @@ from pydantic import ValidationError
 
 from fire_safety import PROJECT_ROOT
 from fire_safety.image import PreparedImage
+from fire_safety.model_output import capture_model_output
 from fire_safety.risk_packs import (
     RuleCatalog,
     RuleDataError,
@@ -186,8 +187,12 @@ async def analyze_image(
     _record_request_notes(usage, first_frame_seconds, first_content_seconds)
 
     with stage(POST_MODEL_STAGE):
+        raw_output = _require_content(content)
+        # Captured before parsing: when the payload is unusable, the untouched
+        # text is the only evidence of how it was unusable.
+        capture_model_output(raw_output)
         try:
-            payload = json.loads(_require_content(content))
+            payload = json.loads(raw_output)
         except json.JSONDecodeError as exc:
             raise InvalidModelOutputError(
                 "Qwen 返回的结构化结果无效",

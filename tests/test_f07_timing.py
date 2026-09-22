@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import html
 import json
 import logging
 from io import BytesIO
@@ -9,13 +10,19 @@ from types import SimpleNamespace
 import pytest
 from conftest import VALID_VISUAL_OUTPUT
 from PIL import Image
-from test_f03_qwen import FakeClient, FakeCompletions, configured_settings
+from test_f03_qwen import (
+    FakeClient,
+    FakeCompletions,
+    configured_settings,
+    valid_response_json,
+)
 
 import fire_safety.ui as ui
 from fire_safety.call_log import build_call_record
 from fire_safety.image import PreparedImage, prepare_image
+from fire_safety.model_output import capture_model_output, captured_model_output, capturing
 from fire_safety.pipeline import analyze
-from fire_safety.qwen import analyze_image
+from fire_safety.qwen import InvalidModelOutputError, analyze_image
 from fire_safety.rules import load_rule_catalog
 from fire_safety.schemas import AnalysisResult, AnalysisStatus, VisualInvestigation
 from fire_safety.settings import Settings
@@ -271,6 +278,48 @@ def test_notes_are_noops_without_a_recorder() -> None:
     assert active_recorder() is None
 
 
+def test_qwen_captures_the_raw_response_text() -> None:
+    """原文在解析之前就被捕获，界面才能显示模型到底返回了什么。"""
+
+    async def run() -> str | None:
+        with capturing():
+            await analyze_image(
+                prepared_image(),
+                configured_settings(),
+                FakeClient(FakeCompletions()),  # type: ignore[arg-type]
+            )
+            return captured_model_output()
+
+    assert asyncio.run(run()) == valid_response_json()
+
+
+def test_qwen_captures_the_raw_text_of_an_unusable_response() -> None:
+    """解析失败时原文恰恰是最需要保留的证据。"""
+
+    async def run() -> str | None:
+        with capturing():
+            with pytest.raises(InvalidModelOutputError):
+                await analyze_image(
+                    prepared_image(),
+                    configured_settings(),
+                    FakeClient(FakeCompletions(content="not json")),  # type: ignore[arg-type]
+                )
+            return captured_model_output()
+
+    assert asyncio.run(run()) == "not json"
+
+
+def test_capturing_starts_from_an_empty_slot() -> None:
+    """上一次点击的原文不能替没有输出的这一次顶包。"""
+
+    async def run() -> str | None:
+        capture_model_output("上一次的输出")
+        with capturing():
+            return captured_model_output()
+
+    assert asyncio.run(run()) is None
+
+
 def test_render_timing_html_lists_one_row_per_stage() -> None:
     report = TimingReport(
         total_seconds=42.0,
@@ -285,17 +334,36 @@ def test_render_timing_html_lists_one_row_per_stage() -> None:
 
     assert '<details class="timing">' in rendered
     assert "本次耗时" in rendered
-    assert "后端 42.00 s" in rendered
+    assert "42.00 s" in rendered
     assert rendered.count('class="timing-row"') == 3
     assert "模型请求" in rendered
     assert "41.00 s" in rendered
     assert "500 ms" in rendered
     assert "97.6%" in rendered
-    assert 'id="frs-timing-client-total"' in rendered
+    # 面板只报服务端测得的三个阶段：不标注来源，也不含浏览器侧的估算。
+    assert "后端" not in rendered
+    assert "浏览器端" not in rendered
 
 
 def test_render_timing_html_without_report_is_empty() -> None:
     assert ui.render_timing_html() == ""
+
+
+def test_render_model_output_html_keeps_the_text_verbatim() -> None:
+    text = '{\n  "scene_summary": "通道 <被堵> & 无标识",\n  "findings": []\n}'
+
+    rendered = ui.render_model_output_html(text)
+
+    assert '<details class="raw">' in rendered
+    assert "模型输出原文" in rendered
+    assert '<pre class="raw-text">' in rendered
+    assert html.escape(text, quote=True) in rendered
+    assert "&amp;" in rendered
+
+
+def test_render_model_output_html_is_empty_without_output() -> None:
+    assert ui.render_model_output_html() == ""
+    assert ui.render_model_output_html("") == ""
 
 
 def test_analysis_event_appends_timing_panel_and_logs_it(tmp_path, monkeypatch, caplog) -> None:
@@ -315,11 +383,12 @@ def test_analysis_event_appends_timing_panel_and_logs_it(tmp_path, monkeypatch, 
 
     assert annotated is not None
     assert "本次耗时" in result_html
-    assert 'id="frs-timing-client-total"' in result_html
     assert "图片预处理" in result_html
     assert "模型请求" in result_html
     assert POST_MODEL_STAGE in result_html
     assert result_html.count('class="timing-row"') == 3
+    # 这个替身不产出模型响应，面板不应凭空多出一个原文框。
+    assert '<details class="raw">' not in result_html
     log_line = next(
         record.getMessage() for record in caplog.records if "[耗时]" in record.getMessage()
     )
@@ -364,19 +433,44 @@ def test_analysis_event_reports_timing_when_the_image_is_unusable(tmp_path) -> N
     assert record["model_request_seconds"] is None
 
 
-def test_browser_reports_click_to_paint_elapsed() -> None:
+def test_analysis_event_shows_the_raw_model_output(tmp_path, monkeypatch) -> None:
+    """捕获与渲染接得上：真实 Qwen 客户端写下的原文出现在结果区。"""
+
+    image_path = tmp_path / "scene.png"
+    image_path.write_bytes(png_bytes())
+
+    async def stubbed_analyze(image, *, settings=None):
+        async def qwen_client(prepared, *, settings=None):
+            return await analyze_image(
+                prepared,
+                settings=settings,
+                client=FakeClient(FakeCompletions()),  # type: ignore[arg-type]
+            )
+
+        return await analyze(image, qwen_analyzer=qwen_client, settings=settings)
+
+    monkeypatch.setattr(ui, "analyze", stubbed_analyze)
+    settings = Settings(
+        qwen_base_url="https://qwen.example/v1",
+        qwen_api_key="test-key",
+        qwen_model="qwen-test-model",
+        call_log_path=tmp_path / "model_calls.jsonl",
+        _env_file=None,
+    )
+
+    _, result_html = asyncio.run(run_analysis_event(str(image_path), settings))
+
+    assert '<details class="raw">' in result_html
+    assert "模型输出原文" in result_html
+    assert html.escape(valid_response_json(), quote=True) in result_html
+
+
+def test_page_measures_no_elapsed_time_in_the_browser() -> None:
+    """耗时全部来自服务端；浏览器侧只负责结束扫描动画。"""
+
     app = ui.build_app()
-    dependencies = app.config["dependencies"]
+    js_sources = [item.get("js") or "" for item in app.config["dependencies"]]
 
-    stamped = [
-        item
-        for item in dependencies
-        if "__frsClickAt = performance.now()" in (item.get("js") or "")
-    ]
-    reported = [
-        item for item in dependencies if "frs-timing-client-total" in (item.get("js") or "")
-    ]
-
-    assert len(stamped) == 1
-    assert len(reported) == 1
-    assert 'classList.remove("frs-scanning")' in reported[0]["js"]
+    assert not any("frs-timing-client-total" in source for source in js_sources)
+    assert not any("__frsClickAt" in source for source in js_sources)
+    assert any('classList.remove("frs-scanning")' in source for source in js_sources)
