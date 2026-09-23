@@ -55,6 +55,8 @@ QWEN_PROVIDER=dashscope
 QWEN_MAX_PIXELS=8388608
 # 可选：none / low / medium / xhigh；none 关闭支持该档位的模型思考模式
 # QWEN_REASONING_EFFORT=none
+# 可选：0–2；不设置时使用模型服务默认值
+# QWEN_TEMPERATURE=0.1
 # 可选；默认写入项目根目录 model_calls.jsonl
 # CALL_LOG_PATH=model_calls.jsonl
 ```
@@ -64,6 +66,7 @@ QWEN_MAX_PIXELS=8388608
 vLLM 通过 `mm_processor_kwargs` 传给视觉处理器，llama.cpp 的图片 token 上限由服务端启动参数控制。
 `QWEN_REASONING_EFFORT` 为可选项；`none` 可关闭百炼 Qwen3.8 混合思考模型的思考模式，
 默认不配置时保持模型服务原有默认推理行为。
+`QWEN_TEMPERATURE` 为可选项，范围为 0–2；设置为 `0.1` 后，每次视觉分析请求都会显式传给模型服务。
 
 安装和运行：
 
