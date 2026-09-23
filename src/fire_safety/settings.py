@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     qwen_provider: Literal["dashscope", "llamacpp", "vllm"] = "dashscope"
     qwen_max_pixels: int = Field(default=8_388_608, ge=65_536, le=16_777_216)
     qwen_reasoning_effort: Literal["none", "low", "medium", "xhigh"] | None = None
+    qwen_temperature: float | None = Field(default=None, ge=0, le=2)
     call_log_path: Path = PROJECT_ROOT / "model_calls.jsonl"
 
     max_image_bytes: int = Field(default=10 * 1024 * 1024, gt=0)

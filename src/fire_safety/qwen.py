@@ -162,6 +162,8 @@ async def analyze_image(
             },
         },
     }
+    if app_settings.qwen_temperature is not None:
+        request_kwargs["temperature"] = app_settings.qwen_temperature
     if app_settings.qwen_reasoning_effort is not None:
         extra_body["reasoning_effort"] = app_settings.qwen_reasoning_effort
     if extra_body:

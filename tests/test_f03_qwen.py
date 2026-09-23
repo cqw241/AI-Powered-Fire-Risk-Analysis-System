@@ -102,6 +102,7 @@ def configured_settings() -> Settings:
         qwen_provider="dashscope",
         qwen_max_pixels=4_194_304,
         qwen_reasoning_effort="low",
+        qwen_temperature=0.1,
     )
 
 
@@ -158,6 +159,7 @@ def test_analyze_image_sends_one_strict_structured_request() -> None:
     assert len(completions.calls) == 1
     request = completions.calls[0]
     assert request["model"] == "qwen-test-model"
+    assert request["temperature"] == 0.1
     assert request["extra_body"] == {"reasoning_effort": "low"}
     assert request["response_format"] == {
         "type": "json_schema",
@@ -190,6 +192,7 @@ def test_default_dashscope_request_sends_default_pixels_without_reasoning() -> N
     run_analysis(completions, settings=settings)
 
     assert "extra_body" not in completions.calls[0]
+    assert "temperature" not in completions.calls[0]
     image_content = completions.calls[0]["messages"][1]["content"][1]
     assert image_content["max_pixels"] == 8_388_608
 
@@ -197,6 +200,12 @@ def test_default_dashscope_request_sends_default_pixels_without_reasoning() -> N
 def test_invalid_reasoning_effort_is_rejected() -> None:
     with pytest.raises(ValidationError):
         Settings(qwen_reasoning_effort="extreme", _env_file=None)
+
+
+@pytest.mark.parametrize("temperature", [-0.1, 2.1])
+def test_out_of_range_temperature_is_rejected(temperature: float) -> None:
+    with pytest.raises(ValidationError):
+        Settings(qwen_temperature=temperature, _env_file=None)
 
 
 @pytest.mark.parametrize("reasoning_effort", ["none", "low", "medium", "xhigh"])
