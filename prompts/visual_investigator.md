@@ -9,6 +9,7 @@
 5. Finding 不受 Issue Code 列表限制；若没有合适 Issue Code，则保留有价值的可见风险
 6. 对每个 Finding，可以从给定 Issue Code 目录中选择 0 到多个最相关 Code，写入 `suggested_issue_codes`
 7. 图片无法确认的信息写入 `limitations`
+8. 未发现可见消防风险时，返回空 `findings`，不要为凑数编造风险
 
 ## 输出字段
 
