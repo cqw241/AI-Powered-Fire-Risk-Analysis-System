@@ -41,11 +41,11 @@ def test_loading_state_renders_six_visual_stages() -> None:
     assert "场景风险评估" in loading
     assert "规则与法规关联" in loading
     assert "结果校验" in loading
-    assert "frs-loading-breathe 5s" in loading
+    assert "frs-loading-breathe 2s" in loading
     assert "frs-loading-check" in loading
     assert "frs-loading-status-fade" in loading
-    assert "frs-loading-status-fade 30s" in loading
-    assert ".frs-loading-stage:nth-child(6) { animation-delay: 25s; }" in loading
+    assert "frs-loading-status-fade 12s" in loading
+    assert ".frs-loading-stage:nth-child(6) { animation-delay: 10s; }" in loading
     assert ".frs-loading-heading {" in loading
     assert "color: var(--loading-ink) !important;" in loading
     assert ".frs-loading-status > span {" in loading

@@ -577,21 +577,22 @@ def render_loading_html() -> str:
     padding: 0;
     list-style: none;
   }}
+  /* 六个阶段各占 2s，一轮共 12s；下面的标记、勾选与状态行都按这个节拍换算。 */
   .frs-loading-stage {{
     display: grid;
     grid-template-columns: 20px minmax(0, 1fr);
     column-gap: 10px;
     align-items: start;
     opacity: .82;
-    animation: frs-loading-stage-focus 5s linear both;
-    animation-delay: calc(var(--frs-stage-index) * 5s);
+    animation: frs-loading-stage-focus 2s linear both;
+    animation-delay: calc(var(--frs-stage-index) * 2s);
   }}
   .frs-loading-stage:nth-child(1) {{ animation-delay: 0s; }}
-  .frs-loading-stage:nth-child(2) {{ animation-delay: 5s; }}
-  .frs-loading-stage:nth-child(3) {{ animation-delay: 10s; }}
-  .frs-loading-stage:nth-child(4) {{ animation-delay: 15s; }}
-  .frs-loading-stage:nth-child(5) {{ animation-delay: 20s; }}
-  .frs-loading-stage:nth-child(6) {{ animation-delay: 25s; }}
+  .frs-loading-stage:nth-child(2) {{ animation-delay: 2s; }}
+  .frs-loading-stage:nth-child(3) {{ animation-delay: 4s; }}
+  .frs-loading-stage:nth-child(4) {{ animation-delay: 6s; }}
+  .frs-loading-stage:nth-child(5) {{ animation-delay: 8s; }}
+  .frs-loading-stage:nth-child(6) {{ animation-delay: 10s; }}
   .frs-loading-marker {{
     position: relative;
     display: inline-grid;
@@ -612,16 +613,16 @@ def render_loading_html() -> str:
   }}
   .frs-loading-dot {{
     color: var(--loading-ink) !important;
-    animation: frs-loading-breathe 5s ease-in-out both;
-    animation-delay: calc(var(--frs-stage-index) * 5s);
+    animation: frs-loading-breathe 2s ease-in-out both;
+    animation-delay: calc(var(--frs-stage-index) * 2s);
   }}
   .frs-loading-check {{
     color: var(--loading-accent) !important;
     font-size: 16px;
     font-weight: 700;
     opacity: 0;
-    animation: frs-loading-check .32s ease-out both;
-    animation-delay: calc((var(--frs-stage-index) * 5s) + 4.4s);
+    animation: frs-loading-check .13s ease-out both;
+    animation-delay: calc((var(--frs-stage-index) * 2s) + 1.76s);
   }}
   .frs-loading-copy {{
     display: grid;
@@ -654,11 +655,11 @@ def render_loading_html() -> str:
     color: var(--loading-muted) !important;
     opacity: 0;
     transform: translateY(3px);
-    animation: frs-loading-status-fade 30s ease both;
-    animation-delay: calc(var(--frs-status-index) * 5s);
+    animation: frs-loading-status-fade 12s ease both;
+    animation-delay: calc(var(--frs-status-index) * 2s);
   }}
   .frs-loading-status-final {{
-    animation: frs-loading-status-final 1.2s ease 29.7s both !important;
+    animation: frs-loading-status-final .48s ease 11.88s both !important;
   }}
   @media (prefers-color-scheme: dark) {{
     .frs-loading {{
