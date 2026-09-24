@@ -88,7 +88,7 @@ async def analyze(
 
     # Resolved before the model call: a broken local rule package is a local
     # misconfiguration, and discovering it must not cost a paid Qwen request.
-    # 设计文档 §13 buckets local catalog failures under `model_failed`.
+    # The design document groups local catalog failures under `model_failed`.
     try:
         catalog = rule_catalog or get_rule_catalog()
     except RuleDataError as exc:
@@ -157,7 +157,7 @@ def _valid_regions(visual: VisualInvestigation) -> dict[str, list[int]]:
     bbox an Evidence reference meant — so all copies are dropped rather than
     silently resolving to the first one. Geometrically invalid bboxes are
     dropped the same way. In both cases the referencing Finding survives with
-    the offending reference removed, per 设计文档 §7 and §13.
+    the offending reference removed, per the design document's validation boundary.
     """
 
     occurrences = Counter(region.region_id for region in visual.regions)

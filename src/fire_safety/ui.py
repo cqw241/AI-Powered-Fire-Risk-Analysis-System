@@ -1,8 +1,7 @@
 """Gradio page and result rendering for the fire risk analysis system.
 
-The page is deliberately thin: four Gradio components bound to one action. All
-structured result presentation happens in ``render_result_html`` and consumes
-the ``AnalysisResult`` payload only — the renderer never re-derives facts,
+The page is deliberately thin. ``render_result_html`` consumes the
+``AnalysisResult`` payload only — the renderer never re-derives facts,
 reorders findings, or re-runs rule logic. Design decisions are recorded in
 ``docs/ui-design.md``.
 """
